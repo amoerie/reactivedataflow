@@ -409,9 +409,6 @@
     (fill-vector-loop (make-vector size) 0)))
     
        
-       
-
-
 ;;
 ;; see p. 38
 ;;
@@ -441,5 +438,5 @@
       (display object)))
 
 (define the-global-environment (setup-environment))
-(driver-loop)
+;;(driver-loop)
 
