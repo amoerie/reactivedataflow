@@ -1,0 +1,14 @@
+### Racket ###
+*~
+*.bak
+
+compiled/
+
+### Scheme ###
+*.ss~
+*.ss#*
+.#*.ss
+
+*.scm~
+*.scm#*
+.#*.scm
