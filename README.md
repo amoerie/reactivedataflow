@@ -31,8 +31,8 @@ More to come.
 ### Signals = values that change over time
 
 ```Scheme
-$current-seconds              -- gets the current value of the current-seconds signal
-($lift some-op $some-signal)  -- creates a new signal by transforming another signal
-($define $x ($lift ...))      -- assigns a new signal to x, created by transforming another signal
-$x                            -- gets the current value of $x
+$current-seconds                              -- gets the current value of the current-seconds signal
+(lift (lambda (x) (+ x 2)) $current-seconds)  -- creates a new signal by transforming another signal
+(define $x (lift ...))                        -- assigns a new signal to x, created by transforming another signal
+$x                                            -- gets the current value of $x
 ```
