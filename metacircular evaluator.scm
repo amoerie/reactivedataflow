@@ -468,6 +468,7 @@
         (list '* *)
         (list '- -)
         (list '/ /)
+        (list 'value signal-value)
 ;;      more primitives
         ))
 
