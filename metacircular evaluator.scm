@@ -313,8 +313,13 @@
 (define (signal-subscribers s)
   (caddr s))
 
+(define (signal-subscribers! s subscribers)
+  (set-car! (cddr s) subscribers))
+
 (define (make-signal value subscribers)
   (list 'signal value subscribers))
+
+(define $current-seconds (make-signal 0 '()))
 
 ;;
 ;; Subscribers
@@ -333,6 +338,12 @@
 (define (make-subscriber lift signal)
   (list 'subscriber lift signal))
 
+;; Adds a subscriber to the source signal. Note that subscribers are prepended to the subscriber list. So the first subscriber has subscribed last.
+(define (subscribe! source-signal lift target-signal)
+  (let ((subscriber (make-subscriber lift target-signal))
+        (subscribers (signal-subscribers source-signal)))
+    (signal-subscribers! source-signal (cons subscriber subscribers))))
+
 ;;
 ;; Updating a signal
 ;; 
@@ -346,8 +357,8 @@
       (let ((first-subscriber (car subscribers))
             (remaining-subscribers (cdr subscribers)))
            (begin
-             (notify-subscriber! first-subscriber value)
-             (notify-subscribers! remaining-subscribers value)))))  
+             (notify-subscribers! remaining-subscribers value)
+             (notify-subscriber! first-subscriber value)))))  
 
 (define (notify-subscriber! subscriber value)
   (let ((signal (subscriber-signal subscriber))
@@ -414,6 +425,7 @@
                              the-empty-environment)))
     (define-variable! 'true true initial-env)
     (define-variable! 'false false initial-env)
+    (define-variable! '$current-seconds $current-seconds initial-env)
     initial-env))
 
 ;;
