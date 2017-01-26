@@ -30,6 +30,8 @@
         ((cond? exp) (eval (cond->if exp) env))
         ((tab? exp)
          (eval-tab exp env))
+        ((lift? exp)
+         (eval-lift (lift-operator exp) (lift-signal exp) env))
         ((application? exp)
          (apply (eval (operator exp) env)
                 (list-of-values (operands exp) env)))
@@ -323,24 +325,24 @@
 
 ;;
 ;; Subscribers
-;; 1 subscriber: [ "subscriber", lift, signal ]
-;; lift = the transformation function that takes an input value and produces the new output value that should be assigned to the signal
+;; 1 subscriber: [ "subscriber", operator, signal ]
+;; operator = the transformation function that takes an input value and produces the new output value that should be assigned to the signal
 ;;
 (define (subscriber? s)
   (tagged-list? s 'subscriber))
 
-(define (subscriber-lift s)
+(define (subscriber-operator s)
   (cadr s))
 
 (define (subscriber-signal s)
   (caddr s))
 
-(define (make-subscriber lift signal)
-  (list 'subscriber lift signal))
+(define (make-subscriber operator signal)
+  (list 'subscriber operator signal))
 
 ;; Adds a subscriber to the source signal. Note that subscribers are prepended to the subscriber list. So the first subscriber has subscribed last.
-(define (subscribe! source-signal lift target-signal)
-  (let ((subscriber (make-subscriber lift target-signal))
+(define (subscribe! source-signal operator target-signal)
+  (let ((subscriber (make-subscriber operator target-signal))
         (subscribers (signal-subscribers source-signal)))
     (signal-subscribers! source-signal (cons subscriber subscribers))))
 
@@ -362,8 +364,29 @@
 
 (define (notify-subscriber! subscriber value)
   (let ((signal (subscriber-signal subscriber))
-        (lift   (subscriber-lift subscriber)))
-    (update-signal! signal (lift value))))
+        (operator (subscriber-operator subscriber)))
+    (update-signal! signal (apply operator value))))
+
+;;
+;; Lifting a signal
+;; creates a new signal by transforming another one
+;;
+(define (lift? exp) (tagged-list? exp 'lift))
+
+(define (lift-operator exp) (cadr exp))
+(define (lift-signal exp) (caddr exp))
+
+(define (eval-lift operator-exp signal-exp env)
+  (let* (
+         (source-signal (eval signal-exp env))
+         (source-signal-value (signal-value source-signal))
+         (operator (eval operator-exp env))
+         (initial-value (apply operator (list source-signal-value)))
+         (new-signal (make-signal initial-value '()))
+        )
+    (begin
+      (subscribe! source-signal operator new-signal)
+      new-signal)))
 
 ;;
 ;; see p. 32
@@ -441,6 +464,10 @@
         (list 'cdr cdr)
         (list 'cons cons)
         (list 'null? null?)
+        (list '+ +)
+        (list '* *)
+        (list '- -)
+        (list '/ /)
 ;;      more primitives
         ))
 
@@ -479,7 +506,7 @@
          v)
     (fill-vector-loop (make-vector size) 0)))
     
-       
+
 ;;
 ;; see p. 38
 ;;
