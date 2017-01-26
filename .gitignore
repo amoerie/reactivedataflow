@@ -1,6 +1,7 @@
 ### Racket ###
 *~
 *.bak
+*.2 
 
 compiled/
 
