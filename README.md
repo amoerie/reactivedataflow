@@ -30,10 +30,9 @@ More to come.
 
 ### Signals = values that change over time
 
-$current-seconds will be provided by the interpreter as a Signal that emits
-a new value every second. Its value will be equal to the amount of seconds
-since January 1st 1970.
-
 ```Scheme
-(define $now $current-seconds) --make an alias
+$current-seconds              -- gets the current value of the current-seconds signal
+($lift some-op $some-signal)  -- creates a new signal by transforming another signal
+($define $x ($lift ...))      -- assigns a new signal to x, created by transforming another signal
+$x                            -- gets the current value of $x
 ```

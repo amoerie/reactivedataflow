@@ -1,3 +1,5 @@
+(#%require srfi/19)
+
 ;;
 ;;toegevoegd
 ;;
@@ -294,6 +296,63 @@
 (define (add-binding-to-frame! var val frame)
   (set-car! frame (cons var (car frame)))
   (set-cdr! frame (cons val (cdr frame))))
+
+;;
+;; Signals
+;; 1 signal: ( "signal", (value , [subscribers])
+;;
+(define (signal? s)
+  (tagged-list? s 'signal))
+
+(define (signal-value s)
+  (cadr s))
+
+(define (signal-value! s value)
+  (set-car! (cdr s) value))
+
+(define (signal-subscribers s)
+  (caddr s))
+
+(define (make-signal value subscribers)
+  (list 'signal value subscribers))
+
+;;
+;; Subscribers
+;; 1 subscriber: [ "subscriber", lift, signal ]
+;; lift = the transformation function that takes an input value and produces the new output value that should be assigned to the signal
+;;
+(define (subscriber? s)
+  (tagged-list? s 'subscriber))
+
+(define (subscriber-lift s)
+  (cadr s))
+
+(define (subscriber-signal s)
+  (caddr s))
+
+(define (make-subscriber lift signal)
+  (list 'subscriber lift signal))
+
+;;
+;; Updating a signal
+;; 
+(define (update-signal! signal value)
+  (signal-value! signal value)
+  (notify-subscribers! (signal-subscribers signal) value))
+
+(define (notify-subscribers! subscribers value)
+  (if (null? subscribers)
+      'ok
+      (let ((first-subscriber (car subscribers))
+            (remaining-subscribers (cdr subscribers)))
+           (begin
+             (notify-subscriber! first-subscriber value)
+             (notify-subscribers! remaining-subscribers value)))))  
+
+(define (notify-subscriber! subscriber value)
+  (let ((signal (subscriber-signal subscriber))
+        (lift   (subscriber-lift subscriber)))
+    (update-signal! signal (lift value))))
 
 ;;
 ;; see p. 32
