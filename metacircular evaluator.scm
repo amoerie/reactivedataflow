@@ -321,7 +321,13 @@
 (define (make-signal value subscribers)
   (cons 'signal (mcons value subscribers)))
 
+;;
+;; $current-seconds
+;;
 (define $current-seconds (make-signal 0 '()))
+(define (signal-loop)
+  (update-signal! $current-seconds (current-seconds))
+  (signal-loop))
 
 ;;
 ;; Subscribers
@@ -350,8 +356,12 @@
 ;; Updating a signal
 ;; 
 (define (update-signal! signal value)
-  (signal-value! signal value)
-  (notify-subscribers! (signal-subscribers signal) value))
+  (let ((current-value (signal-value signal)))
+    (if (eq? current-value value)
+        'ok
+        (begin
+          (signal-value! signal value)
+          (notify-subscribers! (signal-subscribers signal) value)))))
 
 (define (notify-subscribers! subscribers value)
   (if (null? subscribers)
@@ -365,7 +375,7 @@
 (define (notify-subscriber! subscriber value)
   (let ((signal (subscriber-signal subscriber))
         (operator (subscriber-operator subscriber)))
-    (update-signal! signal (apply-in-scope operator value))))
+    (update-signal! signal (apply-in-scope operator (list value)))))
 
 ;;
 ;; Lifting a signal
@@ -538,5 +548,8 @@
       (display object)))
 
 (define the-global-environment (setup-environment))
-;;(driver-loop)
+
+;; keep signals up to date in a separate thread
+(thread signal-loop)
+(driver-loop)
 
