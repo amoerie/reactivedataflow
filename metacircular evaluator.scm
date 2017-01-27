@@ -1,4 +1,4 @@
-(#%require srfi/19)
+ #lang racket/base
 
 ;;
 ;;toegevoegd
@@ -33,7 +33,7 @@
         ((lift? exp)
          (eval-lift (lift-operator exp) (lift-signal exp) env))
         ((application? exp)
-         (apply (eval (operator exp) env)
+         (apply-in-scope (eval (operator exp) env)
                 (list-of-values (operands exp) env)))
 
         (else
@@ -42,7 +42,7 @@
 ;;
 ;; see p. 8/9
 ;;
-(define (apply procedure arguments)
+(define (apply-in-scope procedure arguments)
   (cond ((primitive-procedure? procedure)
          (apply-primitive-procedure procedure arguments))
         ((compound-procedure? procedure)
@@ -117,7 +117,7 @@
 ;; see p. 16
 ;;
 (define (tagged-list? exp tag)
-  (if (pair? exp)
+  (if (mpair? exp)
       (eq? (car exp) tag)
       false))
 
@@ -240,7 +240,7 @@
 ;;
 ;; see p. 26
 ;;
-(define (application? exp) (pair? exp))
+(define (application? exp) (mpair? exp))
 
 (define (operator exp) (car exp))
 
@@ -290,14 +290,14 @@
 ;; see p. 31
 ;;
 (define (make-frame variables values)
-  (cons variables values))
+  (mcons variables values))
 
-(define (frame-variables frame) (car frame))
-(define (frame-values frame) (cdr frame))
+(define (frame-variables frame) (mcar frame))
+(define (frame-values frame) (mcdr frame))
 
 (define (add-binding-to-frame! var val frame)
-  (set-car! frame (cons var (car frame)))
-  (set-cdr! frame (cons val (cdr frame))))
+  (set-mcar! frame (cons var (frame-variables frame)))
+  (set-mcdr! frame (cons val (frame-values frame))))
 
 ;;
 ;; Signals
@@ -307,19 +307,19 @@
   (tagged-list? s 'signal))
 
 (define (signal-value s)
-  (cadr s))
-
-(define (signal-value! s value)
-  (set-car! (cdr s) value))
+  (mcar (cdr s)))
 
 (define (signal-subscribers s)
-  (caddr s))
+  (mcdr (cdr s)))
+
+(define (signal-value! s value)
+  (set-mcar! (cdr s) value))
 
 (define (signal-subscribers! s subscribers)
-  (set-car! (cddr s) subscribers))
+  (set-mcdr! (cdr s) subscribers))
 
 (define (make-signal value subscribers)
-  (list 'signal value subscribers))
+  (cons 'signal (mcons value subscribers)))
 
 (define $current-seconds (make-signal 0 '()))
 
@@ -365,7 +365,7 @@
 (define (notify-subscriber! subscriber value)
   (let ((signal (subscriber-signal subscriber))
         (operator (subscriber-operator subscriber)))
-    (update-signal! signal (apply operator value))))
+    (update-signal! signal (apply-in-scope operator value))))
 
 ;;
 ;; Lifting a signal
@@ -381,7 +381,7 @@
          (source-signal (eval signal-exp env))
          (source-signal-value (signal-value source-signal))
          (operator (eval operator-exp env))
-         (initial-value (apply operator (list source-signal-value)))
+         (initial-value (apply-in-scope operator (list source-signal-value)))
          (new-signal (make-signal initial-value '()))
         )
     (begin
@@ -415,7 +415,7 @@
       (cond ((null? vars)
              (env-loop (enclosing-environment env)))
             ((eq? var (car vars))
-             (set-car! vals val))
+             (set-mcar! vals val))
             (else (scan (cdr vars) (cdr vals)))))
     (if (eq? env the-empty-environment)
         (error "Unbound variable -- SET!" var)
@@ -433,7 +433,7 @@
       (cond ((null? vars)
              (add-binding-to-frame! var val frame))
             ((eq? var (car vars))
-             (set-car! vals val))
+             (set-mcar! vals val))
             (else (scan (cdr vars) (cdr vals)))))
     (scan (frame-variables frame)
           (frame-values frame))))
@@ -503,8 +503,8 @@
          (if (< i size)
              (begin 
                (vector-set! v i (generator))
-               (fill-vector-loop v (+ i 1))))
-         v)
+               (fill-vector-loop v (+ i 1)))
+             v))
     (fill-vector-loop (make-vector size) 0)))
     
 
