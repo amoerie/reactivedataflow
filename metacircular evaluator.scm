@@ -327,6 +327,7 @@
 (define $current-seconds (make-signal 0 '()))
 (define (signal-loop)
   (update-signal! $current-seconds (current-seconds))
+  (sleep 0.05)
   (signal-loop))
 
 ;;
