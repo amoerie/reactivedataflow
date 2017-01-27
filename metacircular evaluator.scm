@@ -117,7 +117,7 @@
 ;; see p. 16
 ;;
 (define (tagged-list? exp tag)
-  (if (mpair? exp)
+  (if (pair? exp)
       (eq? (car exp) tag)
       false))
 
@@ -240,7 +240,7 @@
 ;;
 ;; see p. 26
 ;;
-(define (application? exp) (mpair? exp))
+(define (application? exp) (pair? exp))
 
 (define (operator exp) (car exp))
 
@@ -468,6 +468,7 @@
         (list '* *)
         (list '- -)
         (list '/ /)
+        (list 'even? even?)
         (list 'value signal-value)
 ;;      more primitives
         ))
