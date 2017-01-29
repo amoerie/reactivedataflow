@@ -473,7 +473,11 @@
 
 ;;
 ;; Source signals: signals which are not derived from anything else. They are capable of independently providing their own values
-;; 
+;; Object structure: [ $signal, [subscriber1, subscriber2, ...] ]
+;;
+
+(define the-empty-signal null)
+
 (define (make-source-signal $signal)
   (mcons $signal '()))
 
@@ -491,6 +495,38 @@
 
 (define source-signals (map make-source-signal (list $current-seconds $random-integer)))
 
+;;
+;; Derived signals: signals which derive from other signals, taking their values as input and producing something of their own
+;; Derived signals should be informed whenever one of their input signals emits a new value, so that they are able to recompute their value.
+;; Object structure: [
+;;                    $signal,
+;;                    [ $input-signal1, $input-signal2, ... ],
+;;                    value-provider,
+;;                    [ subscriber1, subscriber2, ... ]
+;;                   ]
+;; The value-provider parameter is a function that takes the value from each input signal and returns the new value for this derived signal
+;;
+(define (make-derived-signal $signal input-signals value-provider)
+  (cons $signal (cons input-signals (mcons value-provider '()))))
+
+(define (derived-signal-signal derived-signal)
+  (car derived-signal))
+
+(define (derived-signal-input-signals derived-signal)
+  (cadr derived-signal))
+
+(define (derived-signal-value-provider derived-signal)
+  (mcar (cddr derived-signal)))
+
+(define (derived-signal-subscribers derived-signal)
+  (mcdr (cddr derived-signal)))
+
+(define (is-derived-signal-dirty? derived-signal)
+  (signal-is-dirty? (derived-signal-signal derived-signal)))
+
+(define (derived-signal-subscribe! derived-signal subscriber)
+  (let ((current-subscribers (derived-signal-subscribers derived-signal)))
+    (set-mcdr! (cddr derived-signal) (cons subscriber current-subscribers))))
 
 ;; ====================================
 ;;                REPL

@@ -13,3 +13,4 @@ compiled/
 *.scm~
 *.scm#*
 .#*.scm
+*.1
