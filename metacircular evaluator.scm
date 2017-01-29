@@ -30,8 +30,8 @@
         ((cond? exp) (eval (cond->if exp) env))
         ((tab? exp)
          (eval-tab exp env))
-        ((lift? exp)
-         (eval-lift (lift-operator exp) (lift-signal exp) env))
+;;        ((lift? exp)
+;;         (eval-lift (lift-operator exp) (lift-signal exp) env))
         ((application? exp)
          (apply-in-scope (eval (operator exp) env)
                 (list-of-values (operands exp) env)))
@@ -317,13 +317,13 @@
   (set-mcar! (cdr s) value)
   (set-mcdr! (cdr s) (eq? value old-value)))
   
-(define (make-signal initial-value)
-  (cons 'signal (mcons initial-value #f)))
+(define (make-empty-signal)
+  (cons 'signal (mcons null #f)))
 
 ;;
 ;; $current-seconds
 ;;
-(define $current-seconds (make-signal 0 '()))
+(define $current-seconds (make-empty-signal))
 (define (current-seconds-loop)
   (signal-value! $current-seconds (current-seconds))
   (sleep 0.5)
@@ -482,5 +482,5 @@
 
 ;; keep signals up to date in separate threads
 (thread current-seconds-loop)
-(driver-loop)
+;;(driver-loop)
 
