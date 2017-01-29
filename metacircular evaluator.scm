@@ -298,37 +298,6 @@
 (define (add-binding-to-frame! var val frame)
   (set-mcar! frame (cons var (frame-variables frame)))
   (set-mcdr! frame (cons val (frame-values frame))))
-
-;;
-;; Signals
-;; 1 signal: ( "signal", (value , is-dirty) )
-;;
-(define (signal? s)
-  (tagged-list? s 'signal))
-
-(define (signal-value s)
-  (mcar (cdr s)))
-
-(define (signal-is-dirty? s)
-  (mcdr (cdr s)))
-
-(define (signal-value! s value)
-  (define old-value (signal-value s))
-  (set-mcar! (cdr s) value)
-  (set-mcdr! (cdr s) (eq? value old-value)))
-  
-(define (make-empty-signal)
-  (cons 'signal (mcons null #f)))
-
-;;
-;; $current-seconds
-;;
-(define $current-seconds (make-empty-signal))
-(define (current-seconds-loop)
-  (signal-value! $current-seconds (current-seconds))
-  (sleep 0.5)
-  (current-seconds-loop))
-
 ;;
 ;; see p. 32
 ;;
@@ -410,7 +379,7 @@
         (list '- -)
         (list '/ /)
         (list 'even? even?)
-        (list 'value signal-value)
+;;      (list 'value signal-value)
 ;;      more primitives
         ))
 
@@ -448,11 +417,66 @@
                (fill-vector-loop v (+ i 1)))
              v))
     (fill-vector-loop (make-vector size) 0)))
-    
+
+;; ==============================================
+;; Reactive Signals
+;; ==============================================
 
 ;;
-;; see p. 38
+;; Signals
+;; 1 signal: ( "signal", (value , is-dirty) )
 ;;
+(define (signal? s)
+  (tagged-list? s 'signal))
+
+(define (signal-value s)
+  (mcar (cdr s)))
+
+(define (signal-is-dirty? s)
+  (mcdr (cdr s)))
+
+(define (signal-value! s value)
+  (define old-value (signal-value s))
+  (set-mcar! (cdr s) value)
+  (set-mcdr! (cdr s) (eq? value old-value)))
+  
+(define (make-empty-signal)
+  (cons 'signal (mcons null #f)))
+
+;; ==============================================
+;; Built in signals
+;; ==============================================
+
+;;
+;; $current-seconds
+;; : emits the current seconds since 1st January 1970, every second
+;;
+(define $current-seconds (make-empty-signal))
+(define (current-seconds-loop)
+  (signal-value! $current-seconds (current-seconds))
+  (sleep 0.5)
+  (current-seconds-loop))
+
+;;
+;; $random
+;; : emits a random number between 1 and 100, every (random 0..1 seconds)
+;;
+(define $random-integer (make-empty-signal))
+(define (random-integer-loop)
+  (signal-value! $random-integer (random 1 100))
+  (sleep (random))
+  (random-integer-loop))
+
+;; ==============================================
+;; Signals graph
+;; ==============================================
+
+
+
+
+;; ====================================
+;;                REPL
+;; ====================================
 (define input-prompt ";;; M-Eval input:")
 (define output-prompt ";;; M-Eval value:")
 
@@ -480,7 +504,8 @@
 
 (define the-global-environment (setup-environment))
 
-;; keep signals up to date in separate threads
-(thread current-seconds-loop)
+;; keep built in signals up to date in separate threads
+;;(thread current-seconds-loop)
+;;(thread random-integer-loop)
 ;;(driver-loop)
 
