@@ -476,7 +476,6 @@
 ;; Object structure: [ $signal, [subscriber1, subscriber2, ...] ]
 ;;
 
-(define the-empty-signal null)
 
 (define (make-source-signal $signal)
   (mcons $signal '()))
