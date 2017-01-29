@@ -426,19 +426,19 @@
 ;; Signals
 ;; 1 signal: ( "signal", (value , is-dirty) )
 ;;
-(define (signal? s)
-  (tagged-list? s 'signal))
+(define (signal? $s)
+  (tagged-list? $s 'signal))
 
-(define (signal-value s)
-  (mcar (cdr s)))
+(define (signal-value $s)
+  (mcar (cdr $s)))
 
-(define (signal-is-dirty? s)
-  (mcdr (cdr s)))
+(define (signal-is-dirty? $s)
+  (mcdr (cdr $s)))
 
-(define (signal-value! s value)
-  (define old-value (signal-value s))
-  (set-mcar! (cdr s) value)
-  (set-mcdr! (cdr s) (eq? value old-value)))
+(define (signal-value! $s value)
+  (define old-value (signal-value $s))
+  (set-mcar! (cdr $s) value)
+  (set-mcdr! (cdr $s) (eq? value old-value)))
   
 (define (make-empty-signal)
   (cons 'signal (mcons null #f)))
@@ -471,7 +471,25 @@
 ;; Signals graph
 ;; ==============================================
 
+;;
+;; Source signals: signals which are not derived from anything else. They are capable of independently providing their own values
+;; 
+(define (make-source-signal $signal)
+  (mcons $signal '()))
 
+(define (source-signal-signal source-signal)
+  (mcar source-signal))
+
+(define (source-signal-subscribers source-signal)
+  (mcdr source-signal))
+
+(define (is-source-signal-dirty? source-signal)
+  (signal-is-dirty? (source-signal-signal source-signal)))
+
+(define (source-signal-subscribe! source-signal subscriber)
+  (set-mcdr! source-signal (cons subscriber (source-signal-subscribers source-signal))))
+
+(define source-signals (map make-source-signal (list $current-seconds $random-integer)))
 
 
 ;; ====================================
