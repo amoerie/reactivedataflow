@@ -301,7 +301,7 @@
 
 ;;
 ;; Signals
-;; 1 signal: ( "signal", (value , [subscribers])
+;; 1 signal: ( "signal", (value , is-dirty) )
 ;;
 (define (signal? s)
   (tagged-list? s 'signal))
@@ -309,17 +309,16 @@
 (define (signal-value s)
   (mcar (cdr s)))
 
-(define (signal-subscribers s)
+(define (signal-is-dirty? s)
   (mcdr (cdr s)))
 
 (define (signal-value! s value)
+  (define old-value (signal-value s))
   (set-mcar! (cdr s) value))
-
-(define (signal-subscribers! s subscribers)
-  (set-mcdr! (cdr s) subscribers))
-
-(define (make-signal value subscribers)
-  (cons 'signal (mcons value subscribers)))
+  (set-mcdr! (cdr s) (eq? value old-value))
+  
+(define (make-signal initial-value)
+  (cons 'signal (mcons initial-value #f)))
 
 ;;
 ;; $current-seconds
