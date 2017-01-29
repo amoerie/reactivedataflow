@@ -314,8 +314,8 @@
 
 (define (signal-value! s value)
   (define old-value (signal-value s))
-  (set-mcar! (cdr s) value))
-  (set-mcdr! (cdr s) (eq? value old-value))
+  (set-mcar! (cdr s) value)
+  (set-mcdr! (cdr s) (eq? value old-value)))
   
 (define (make-signal initial-value)
   (cons 'signal (mcons initial-value #f)))
@@ -324,78 +324,10 @@
 ;; $current-seconds
 ;;
 (define $current-seconds (make-signal 0 '()))
-(define (signal-loop)
-  (update-signal! $current-seconds (current-seconds))
-  (signal-loop))
-
-;;
-;; Subscribers
-;; 1 subscriber: [ "subscriber", operator, signal ]
-;; operator = the transformation function that takes an input value and produces the new output value that should be assigned to the signal
-;;
-(define (subscriber? s)
-  (tagged-list? s 'subscriber))
-
-(define (subscriber-operator s)
-  (cadr s))
-
-(define (subscriber-signal s)
-  (caddr s))
-
-(define (make-subscriber operator signal)
-  (list 'subscriber operator signal))
-
-;; Adds a subscriber to the source signal. Note that subscribers are prepended to the subscriber list. So the first subscriber has subscribed last.
-(define (subscribe! source-signal operator target-signal)
-  (let ((subscriber (make-subscriber operator target-signal))
-        (subscribers (signal-subscribers source-signal)))
-    (signal-subscribers! source-signal (cons subscriber subscribers))))
-
-;;
-;; Updating a signal
-;; 
-(define (update-signal! signal value)
-  (let ((current-value (signal-value signal)))
-    (if (eq? current-value value)
-        'ok
-        (begin
-          (signal-value! signal value)
-          (notify-subscribers! (signal-subscribers signal) value)))))
-
-(define (notify-subscribers! subscribers value)
-  (if (null? subscribers)
-      'ok
-      (let ((first-subscriber (car subscribers))
-            (remaining-subscribers (cdr subscribers)))
-           (begin
-             (notify-subscribers! remaining-subscribers value)
-             (notify-subscriber! first-subscriber value)))))  
-
-(define (notify-subscriber! subscriber value)
-  (let ((signal (subscriber-signal subscriber))
-        (operator (subscriber-operator subscriber)))
-    (update-signal! signal (apply-in-scope operator (list value)))))
-
-;;
-;; Lifting a signal
-;; creates a new signal by transforming another one
-;;
-(define (lift? exp) (tagged-list? exp 'lift))
-
-(define (lift-operator exp) (cadr exp))
-(define (lift-signal exp) (caddr exp))
-
-(define (eval-lift operator-exp signal-exp env)
-  (let* (
-         (source-signal (eval signal-exp env))
-         (source-signal-value (signal-value source-signal))
-         (operator (eval operator-exp env))
-         (initial-value (apply-in-scope operator (list source-signal-value)))
-         (new-signal (make-signal initial-value '()))
-        )
-    (begin
-      (subscribe! source-signal operator new-signal)
-      new-signal)))
+(define (current-seconds-loop)
+  (signal-value! $current-seconds (current-seconds))
+  (sleep 0.5)
+  (current-seconds-loop))
 
 ;;
 ;; see p. 32
@@ -548,7 +480,7 @@
 
 (define the-global-environment (setup-environment))
 
-;; keep signals up to date in a separate thread
-(thread signal-loop)
+;; keep signals up to date in separate threads
+(thread current-seconds-loop)
 (driver-loop)
 
