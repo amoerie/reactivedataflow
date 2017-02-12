@@ -6,6 +6,15 @@
 (define true #t)
 (define false #f)
 
+;; helper functions
+(define (reduce fn initial-value list)
+  (if (null? list)
+      initial-value
+      (reduce fn (fn initial-value (car list)) (cdr list))))
+
+(define (and-2 x y)
+  (and x y))
+
 ;;
 ;; see p. 37
 ;;
@@ -358,7 +367,7 @@
                              the-empty-environment)))
     (define-variable! 'true true initial-env)
     (define-variable! 'false false initial-env)
-    (define-variable! '$current-seconds $current-seconds initial-env)
+;;    (define-variable! '$current-seconds $current-seconds initial-env)
     initial-env))
 
 ;;
@@ -419,29 +428,79 @@
     (fill-vector-loop (make-vector size) 0)))
 
 ;; ==============================================
-;; Reactive Signals
-;; ==============================================
-
-;;
 ;; Signals
-;; 1 signal: ( "signal", (value , is-dirty) )
+;; ==============================================
 ;;
-(define (signal? $s)
-  (tagged-list? $s 'signal))
+;; Signals: signals can derive from other signals, taking their values as input and producing something of their own.
+;;          Signals without any dependencies (parents) are considered "source" signals
+;;          Signals with dependencies (parents) are considered "derived" signals
+;; Derived signals should be informed whenever one of their parent signals emits a new value, so that they are able to recompute their value.
+;; Every signal also keeps a list of child signals, so signals can access their input-signal values (and whether or not their parents are dirty)
+;; Object structure: [
+;;                    value          : any,         
+;;                    has-value?     : boolean
+;;                    up-to-date?    : boolean,
+;;                    parents        : [signal],
+;;                    value-provider : val1, val2, ... => value,
+;;                    children       : [signal]
+;;                   ]
+;; The value-provider parameter is a function that takes the value from each parent signal and returns the new value for this derived signal
+;;
+(define (make-signal parents value-provider)
+  (list->vector (list null #f #f parents value-provider '())))
 
-(define (signal-value $s)
-  (mcar (cdr $s)))
+(define (signal-value $signal)
+  (if (signal-has-value? $signal)
+      (vector-ref $signal 0)
+      (raise "Cannot access the value of this signal, it does not have one (yet)")))
 
-(define (signal-is-dirty? $s)
-  (mcdr (cdr $s)))
+(define (signal-value! $signal value)
+  (vector-set! $signal 0 value)
+  (signal-has-value! $signal #t))
 
-(define (signal-value! $s value)
-  (define old-value (signal-value $s))
-  (set-mcar! (cdr $s) value)
-  (set-mcdr! (cdr $s) (eq? value old-value)))
-  
-(define (make-empty-signal)
-  (cons 'signal (mcons null #f)))
+(define (signal-has-value? $signal)
+  (vector-ref $signal 1))
+
+(define (signal-has-value! $signal has-value)
+  (vector-set! $signal 1 has-value))
+
+(define (signal-up-to-date? $signal)
+   (vector-ref $signal 2))
+
+(define (signal-up-to-date! $signal up-to-date)
+  (vector-set! $signal 2 up-to-date))
+
+(define (signal-parents $signal)
+  (vector-ref $signal 3))
+
+(define (signal-value-provider $signal)
+  (vector-ref $signal 4))
+
+(define (signal-children $signal)
+  (vector-ref $signal 5))
+
+(define (signal-children! $signal children)
+  (vector-set! $signal 5))
+
+;;
+;; Recomputes the value of the provided signal, provided all parents have values
+;; When the value is set, it flags the signal as being up to date
+;; and flags every child as being NOT up to date
+;;
+(define (signal-update! $signal)
+  (define parents (signal-parents $signal))
+  (define children (signal-children $signal))
+  (define parents-have-values (map signal-has-value? parents))
+  (define all-parents-have-values? (reduce and-2 #t parents-have-values))
+  (define)
+  (if (all-parents-have-values?)
+      (let ((value-provider (signal-value-provider $signal))
+            (parent-values (map signal-value parents)))
+           (signal-value! $signal (apply value-provider parent-values))
+           (signal-up-to-date! $signal #t)
+           (for-each (lambda ($child) (signal-up-to-date! $child #f)) children))
+      #f))
+      
 
 ;; ==============================================
 ;; Built in signals
@@ -451,9 +510,9 @@
 ;; $current-seconds
 ;; : emits the current seconds since 1st January 1970, every second
 ;;
-(define $current-seconds (make-empty-signal))
+(define $current-seconds (make-signal '() current-seconds))
 (define (current-seconds-loop)
-  (signal-value! $current-seconds (current-seconds))
+  (signal-up-to-date! $current-seconds #f)
   (sleep 0.5)
   (current-seconds-loop))
 
@@ -461,72 +520,17 @@
 ;; $random
 ;; : emits a random number between 1 and 100, every (random 0..1 seconds)
 ;;
-(define $random-integer (make-empty-signal))
+(define $random-integer (make-signal '() (lambda () (random 1 100)))
 (define (random-integer-loop)
-  (signal-value! $random-integer (random 1 100))
+  (signal-up-to-date! $random-integer #f)
   (sleep (random))
   (random-integer-loop))
 
 ;; ==============================================
-;; Signals graph
+;; Signal graph
 ;; ==============================================
-
-;;
-;; Source signals: signals which are not derived from anything else. They are capable of independently providing their own values
-;; Object structure: [ $signal, [subscriber1, subscriber2, ...] ]
-;;
-
-
-(define (make-source-signal $signal)
-  (mcons $signal '()))
-
-(define (source-signal-signal source-signal)
-  (mcar source-signal))
-
-(define (source-signal-subscribers source-signal)
-  (mcdr source-signal))
-
-(define (is-source-signal-dirty? source-signal)
-  (signal-is-dirty? (source-signal-signal source-signal)))
-
-(define (source-signal-subscribe! source-signal subscriber)
-  (set-mcdr! source-signal (cons subscriber (source-signal-subscribers source-signal))))
-
-(define source-signals (map make-source-signal (list $current-seconds $random-integer)))
-
-;;
-;; Derived signals: signals which derive from other signals, taking their values as input and producing something of their own
-;; Derived signals should be informed whenever one of their input signals emits a new value, so that they are able to recompute their value.
-;; Object structure: [
-;;                    $signal,
-;;                    [ $input-signal1, $input-signal2, ... ],
-;;                    value-provider,
-;;                    [ subscriber1, subscriber2, ... ]
-;;                   ]
-;; The value-provider parameter is a function that takes the value from each input signal and returns the new value for this derived signal
-;;
-(define (make-derived-signal $signal input-signals value-provider)
-  (cons $signal (cons input-signals (mcons value-provider '()))))
-
-(define (derived-signal-signal derived-signal)
-  (car derived-signal))
-
-(define (derived-signal-input-signals derived-signal)
-  (cadr derived-signal))
-
-(define (derived-signal-value-provider derived-signal)
-  (mcar (cddr derived-signal)))
-
-(define (derived-signal-subscribers derived-signal)
-  (mcdr (cddr derived-signal)))
-
-(define (is-derived-signal-dirty? derived-signal)
-  (signal-is-dirty? (derived-signal-signal derived-signal)))
-
-(define (derived-signal-subscribe! derived-signal subscriber)
-  (let ((current-subscribers (derived-signal-subscribers derived-signal)))
-    (set-mcdr! (cddr derived-signal) (cons subscriber current-subscribers))))
-
+  
+  
 ;; ====================================
 ;;                REPL
 ;; ====================================
