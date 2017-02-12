@@ -447,7 +447,8 @@
 ;; The value-provider parameter is a function that takes the value from each parent signal and returns the new value for this derived signal
 ;;
 (define (make-signal parents value-provider)
-  (list->vector (list null #f #f parents value-provider '())))
+  (define $signal (list->vector (list null #f #f parents value-provider '())))
+  (for-each (lambda ($parent) (signal-add-child! $parent $signal)) parents))
 
 (define (signal-value $signal)
   (if (signal-has-value? $signal)
@@ -482,6 +483,9 @@
 (define (signal-children! $signal children)
   (vector-set! $signal 5))
 
+(define (signal-add-child! $signal $child)
+  (signal-children! $signal (cons $child (signal-children $signal))))
+
 ;;
 ;; Recomputes the value of the provided signal, provided all parents have values
 ;; When the value is set, it flags the signal as being up to date
@@ -492,8 +496,7 @@
   (define children (signal-children $signal))
   (define parents-have-values (map signal-has-value? parents))
   (define all-parents-have-values? (reduce and-2 #t parents-have-values))
-  (define)
-  (if (all-parents-have-values?)
+  (if all-parents-have-values?
       (let ((value-provider (signal-value-provider $signal))
             (parent-values (map signal-value parents)))
            (signal-value! $signal (apply value-provider parent-values))
@@ -520,7 +523,7 @@
 ;; $random
 ;; : emits a random number between 1 and 100, every (random 0..1 seconds)
 ;;
-(define $random-integer (make-signal '() (lambda () (random 1 100)))
+(define $random-integer (make-signal '() (lambda () (random 1 100))))
 (define (random-integer-loop)
   (signal-up-to-date! $random-integer #f)
   (sleep (random))
