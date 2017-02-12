@@ -31,7 +31,17 @@ More to come.
 ### Signals = values that change over time
 
 ```Scheme
-$current-seconds                              -- gets the current value of the current-seconds signal
+(value $signal)                               -- gets the current value of a signal
+(lift operator $signal1 $signal2 ...)         -- lifts existing signals into a new signal, where the operator will be called with the values of each signal every time a signal emits
+```
+
+*Note that the $-prefix is merely a convention and not enforced in any way*
+
+Examples
+
+```Scheme
+(value $current-seconds)                      -- gets the current value of the current-seconds signal
+(value $random-integer)                       -- gets the current value of the random-integer signal, which outputs random numbers between 1 and 100
 (lift (lambda (x) (+ x 2)) $current-seconds)  -- creates a new signal by transforming another signal
 (define $x (lift ...))                        -- assigns a new signal to x, created by transforming another signal
 (value $x)                                    -- gets the current value of $x
