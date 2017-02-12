@@ -33,8 +33,8 @@
         ((cond? exp) (eval (cond->if exp) env))
         ((tab? exp)
          (eval-tab exp env))
-;;        ((lift? exp)
-;;         (eval-lift (lift-operator exp) (lift-signal exp) env))
+        ((lift? exp)
+         (eval-lift (lift-operator exp) (lift-signals exp) env))
         ((application? exp)
          (apply-in-scope (eval (operator exp) env)
                 (list-of-values (operands exp) env)))
@@ -361,7 +361,8 @@
                              the-empty-environment)))
     (define-variable! 'true true initial-env)
     (define-variable! 'false false initial-env)
-;;    (define-variable! '$current-seconds $current-seconds initial-env)
+    (define-variable! '$current-seconds (make-signal-wrapper $current-seconds) initial-env)
+    (define-variable! '$random-integer (make-signal-wrapper $random-integer) initial-env)
     initial-env))
 
 ;;
@@ -382,7 +383,7 @@
         (list '- -)
         (list '/ /)
         (list 'even? even?)
-;;      (list 'value signal-value)
+        (list 'value (lambda (exp) (signal-value (signal-wrapper-unwrap exp))))
 ;;      more primitives
         ))
 
@@ -400,7 +401,6 @@
 (define (apply-primitive-procedure proc args)
   (apply-in-underlying-scheme
    (primitive-implementation proc) args))
-
 (define (tab? exp)
   (tagged-list? exp 'tab))
 
@@ -420,7 +420,19 @@
                (fill-vector-loop v (+ i 1)))
              v))
     (fill-vector-loop (make-vector size) 0)))
+  
+;; ==============================================
+;; Signal-wrappers: used to flag signals in the environment
+;; ==============================================
+(define (make-signal-wrapper $signal)
+  (cons 'signal $signal))
 
+(define (signal-wrapper? exp)
+  (tagged-list? exp 'signal))
+
+(define (signal-wrapper-unwrap exp)
+  (cdr exp))
+  
 ;; ==============================================
 ;; Signals
 ;; ==============================================
@@ -444,7 +456,6 @@
   (define $signal (list->vector (list null #f #f parents value-provider '())))
   (for-each (lambda ($parent) (signal-add-child! $parent $signal)) parents)
   $signal)
-
 
 (define (signal-value $signal)
   (if (signal-has-value? $signal)
@@ -517,12 +528,12 @@
 
 ;;
 ;; $random
-;; : emits a random number between 1 and 100, every (random 0..1 seconds)
+;; : emits a random number between 1 and 100, every (random 1 .. 10 seconds)
 ;;
 (define $random-integer (make-signal '() (lambda () (random 1 100))))
 (define (random-integer-loop)
   (signal-up-to-date! $random-integer #f)
-  (sleep (random))
+  (sleep (random 1 10))
   (random-integer-loop))
 
 ;; ==============================================
@@ -540,8 +551,24 @@
 (define (update-signals-loop)
   (define signals (get-topologically-sorted-signals))
   (for-each signal-update! (filter (compose not signal-up-to-date?) signals))
-  (sleep 0.2)
+  (sleep 0.05)
   (update-signals-loop))
+
+;; ==============================================
+;; Lifting
+;; One or more signals can be lifted with a procedure to create a new signal
+;; Syntax: (lift (lambda (value1 value2 ...) ( ... )) $signal1 $signal2 ...)
+;; ==============================================
+(define (lift? exp) (tagged-list? exp 'lift))
+(define (lift-operator exp) (cadr exp))
+(define (lift-signals exp) (cddr exp))
+
+(define (eval-lift operator-exp signal-exps env)
+  (define operator (eval operator-exp env))
+  (define wrapped-parents (map (lambda (signal-exp) (eval signal-exp env)) signal-exps))
+  (define parents (map signal-wrapper-unwrap wrapped-parents)) 
+  (define value-provider (lambda parent-values (apply-in-scope operator parent-values)))
+  (make-signal-wrapper (make-signal parents value-provider)))
   
 ;; ====================================
 ;;                REPL
@@ -581,5 +608,5 @@
 (display "Booting update-signals loop")
 (thread update-signals-loop)
 (display "Booting driver loop")
-;;(driver-loop)
+(driver-loop)
 
