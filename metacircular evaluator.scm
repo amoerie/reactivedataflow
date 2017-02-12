@@ -7,13 +7,7 @@
 (define false #f)
 
 ;; helper functions
-(define (reduce fn initial-value list)
-  (if (null? list)
-      initial-value
-      (reduce fn (fn initial-value (car list)) (cdr list))))
-
-(define (and-2 x y)
-  (and x y))
+(define (and-2 x y)  (and x y))
 
 ;;
 ;; see p. 37
@@ -448,7 +442,9 @@
 ;;
 (define (make-signal parents value-provider)
   (define $signal (list->vector (list null #f #f parents value-provider '())))
-  (for-each (lambda ($parent) (signal-add-child! $parent $signal)) parents))
+  (for-each (lambda ($parent) (signal-add-child! $parent $signal)) parents)
+  $signal)
+
 
 (define (signal-value $signal)
   (if (signal-has-value? $signal)
@@ -481,7 +477,7 @@
   (vector-ref $signal 5))
 
 (define (signal-children! $signal children)
-  (vector-set! $signal 5))
+  (vector-set! $signal 5 children))
 
 (define (signal-add-child! $signal $child)
   (signal-children! $signal (cons $child (signal-children $signal))))
@@ -495,7 +491,7 @@
   (define parents (signal-parents $signal))
   (define children (signal-children $signal))
   (define parents-have-values (map signal-has-value? parents))
-  (define all-parents-have-values? (reduce and-2 #t parents-have-values))
+  (define all-parents-have-values? (foldl and-2 #t parents-have-values))
   (if all-parents-have-values?
       (let ((value-provider (signal-value-provider $signal))
             (parent-values (map signal-value parents)))
@@ -530,9 +526,22 @@
   (random-integer-loop))
 
 ;; ==============================================
-;; Signal graph
+;; Signal graph + update loop
 ;; ==============================================
-  
+(define source-signals (list $current-seconds $random-integer))
+
+(define (get-topologically-sorted-signals)
+  (define (topological-sort accumulator next-children)
+    (if (null? next-children)
+        accumulator
+        (topological-sort (append accumulator next-children) (foldl append '() (map signal-children next-children)))))
+  (topological-sort '() source-signals))
+
+(define (update-signals-loop)
+  (define signals (get-topologically-sorted-signals))
+  (for-each signal-update! (filter (compose not signal-up-to-date?) signals))
+  (sleep 0.2)
+  (update-signals-loop))
   
 ;; ====================================
 ;;                REPL
@@ -565,7 +574,12 @@
 (define the-global-environment (setup-environment))
 
 ;; keep built in signals up to date in separate threads
-;;(thread current-seconds-loop)
-;;(thread random-integer-loop)
+(display "Booting current-seconds loop")
+(thread current-seconds-loop)
+(display "Booting random-integer loop")
+(thread random-integer-loop)
+(display "Booting update-signals loop")
+(thread update-signals-loop)
+(display "Booting driver loop")
 ;;(driver-loop)
 
