@@ -58,6 +58,8 @@
 (define (apply-in-scope procedure arguments)
   (cond ((primitive-procedure? procedure)
          (apply-primitive-procedure procedure arguments))
+        ((dataflow-procedure? procedure)
+         (apply-dataflow-procedure procedure arguments))
         ((native-procedure? procedure)
          (eval-sequence
           (native-procedure-body procedure)
@@ -270,19 +272,29 @@
 ;;
 (define (make-procedure parameters body env)
   (define native-procedure (list 'nativeprocedure parameters body env))
-  (instructions
-   ;; operation with index 0 : lambda that turns executes the procedure in our environment
+  ;; return a set of dataflow instructions which, when executed, will return the proper value
+  (define dataflow-procedure (instructions
+   ;; operation with index 0 : lambda that executes the procedure in our environment
    (operation (length parameters)
-              (lambda args (apply-in-scope native-procedure args))
+              (lambda args (list (apply-in-scope native-procedure args)))
               (ports (port (link 1 0)))
               )
-   ;; operation with index 1 : lambda that displays and returns the result
-   (operation 1 (lambda (x) (display "Inside data-flow-procedure!") (display x) (newline) (res)) (ports))
+   ;; operation with index 1 : lambda that displays and returns an empty result result
+   (operation 1 (lambda (x) (display "Inside data-flow-procedure!") (display x) (newline) (list)) (ports))
    (ret 1)
    )
   )
+  (list 'dataflowprocedure dataflow-procedure))
 
+(define (dataflow-procedure? p)
+  (tagged-list? p 'dataflowprocedure))
 
+(define (dataflow-procedure-extract p) (cadr p))
+
+(define (apply-dataflow-procedure procedure arguments)
+  (define dataflow-procedure (dataflow-procedure-extract procedure))
+  (define program-arguments (append (list dataflow-procedure 0) arguments))
+  (apply run-program program-arguments))
 
 (define (native-procedure? p)
   (tagged-list? p 'nativeprocedure))
@@ -632,12 +644,6 @@
 (thread update-signals-loop)
 (display "Booting driver loop")
 (driver-loop)
-
-
-;: Sample programs
-
-;; Sample 1. Lifting the current seconds and returning whether it is even or not
-
 
 
 
