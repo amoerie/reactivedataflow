@@ -634,6 +634,12 @@
 (driver-loop)
 
 
+;: Sample programs
+
+;; Sample 1. Lifting the current seconds and returning whether it is even or not
+
+
+
 
 
 

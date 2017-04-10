@@ -65,16 +65,16 @@
                      (operation 1 (lambda (x) (display x) (res)) (ports ))))
 
 (define test-call (instructions
-                   (make-call-store)
-                   (call 2
-                         (ports (port (link 3 0) (link 3 1)))
-                         (ports (port (link 2 0) (link 2 1))))
+    (make-call-store)
+    (call 1
+        (ports (port (link 3 0)))
+        (ports (port (link 2 0))))
 
-                   (operation 2 (lambda (x y) (display "index 2: called with: ") (display x) (display ", ") (display y) (newline) (res)) (ports ))
+    (operation 1 (lambda (x) (display x) (res)) (ports ))
 
-                   (operation 2 (lambda (x y) (display "index 3: called with: ") (display x) (display ", ") (display y) (newline) (res x))
-                              (ports (port (link 4 0))))
-                   (ret 1)))
+    (operation 1 (lambda (x) (display "called with: ") (display x) (res x))
+        (ports (port (link 4 0))))
+    (ret 1)))
 
 ; Factorial
 ; ---------
@@ -158,7 +158,7 @@
 
 (run-program test-operation 0 3 2) (newline)
 (run-program test-switch 0 false) (newline)
-(run-program test-call 1 5 15) (newline)
+(run-program test-call 1 5) (newline)
 (run-program factorial 10 5) (newline)
 (newline)
 (run-program fibonacci 1 20) (newline)
