@@ -73,7 +73,7 @@
                    (operation 2 (lambda (x y) (display "index 2: called with: ") (display x) (display ", ") (display y) (newline) (res)) (ports ))
 
                    (operation 2 (lambda (x y) (display "index 3: called with: ") (display x) (display ", ") (display y) (newline) (res x))
-                              (ports (port (link 4 0) (link 4 1))))
+                              (ports (port (link 4 0))))
                    (ret 1)))
 
 ; Factorial

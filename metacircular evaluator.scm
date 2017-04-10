@@ -1,4 +1,14 @@
- #lang racket/base
+#lang racket
+
+(include "runtime.rkt")
+
+; Instruction types
+; -----------------
+
+(define operation make-op)
+(define switch make-sw)
+(define call make-cl)
+(define ret make-rt)
 
 ;;
 ;;toegevoegd
@@ -37,7 +47,7 @@
          (eval-lift (lift-operator exp) (lift-signals exp) env))
         ((application? exp)
          (apply-in-scope (eval (operator exp) env)
-                (list-of-values (operands exp) env)))
+                         (list-of-values (operands exp) env)))
 
         (else
          (error "Unknown expression type -- EVAL" exp))))
@@ -48,13 +58,13 @@
 (define (apply-in-scope procedure arguments)
   (cond ((primitive-procedure? procedure)
          (apply-primitive-procedure procedure arguments))
-        ((compound-procedure? procedure)
+        ((native-procedure? procedure)
          (eval-sequence
-           (procedure-body procedure)
-           (extend-environment
-             (procedure-parameters procedure)
-             arguments
-             (procedure-environment procedure))))
+          (native-procedure-body procedure)
+          (extend-environment
+           (native-procedure-parameters procedure)
+           arguments
+           (native-procedure-environment procedure))))
         (else
          (error
           "Unknown procedure type -- APPLY" procedure))))
@@ -82,8 +92,8 @@
 ;;
 (define (eval-definition exp env)
   (define-variable! (definition-variable exp)
-                    (eval (definition-value exp) env)
-                    env)
+    (eval (definition-value exp) env)
+    env)
   'ok)
 
 ;;
@@ -259,16 +269,29 @@
 ;; see p. 27
 ;;
 (define (make-procedure parameters body env)
-  (list 'procedure parameters body env))
+  (define native-procedure (list 'nativeprocedure parameters body env))
+  (instructions
+   ;; operation with index 0 : lambda that turns executes the procedure in our environment
+   (operation (length parameters)
+              (lambda args (apply-in-scope native-procedure args))
+              (ports (port (link 1 0)))
+              )
+   ;; operation with index 1 : lambda that displays and returns the result
+   (operation 1 (lambda (x) (display "Inside data-flow-procedure!") (display x) (newline) (res)) (ports))
+   (ret 1)
+   )
+  )
 
-(define (compound-procedure? p)
-  (tagged-list? p 'procedure))
 
-(define (procedure-parameters p) (cadr p))
 
-(define (procedure-body p) (caddr p))
+(define (native-procedure? p)
+  (tagged-list? p 'nativeprocedure))
 
-(define (procedure-environment p) (cadddr p))
+(define (native-procedure-parameters p) (cadr p))
+
+(define (native-procedure-body p) (caddr p))
+
+(define (native-procedure-environment p) (cadddr p))
 
 ;;
 ;; see p. 29
@@ -384,7 +407,7 @@
         (list '/ /)
         (list 'even? even?)
         (list 'value (lambda (exp) (signal-value (signal-wrapper-unwrap exp))))
-;;      more primitives
+        ;;      more primitives
         ))
 
 (define (primitive-procedure-names)
@@ -413,12 +436,12 @@
 (define (eval-tab expr env)
   (let ((size (tab-size expr))
         (generator (eval (tab-generator expr) env)))
-       (define (fill-vector-loop v i)
-         (if (< i size)
-             (begin 
-               (vector-set! v i (generator))
-               (fill-vector-loop v (+ i 1)))
-             v))
+    (define (fill-vector-loop v i)
+      (if (< i size)
+          (begin 
+            (vector-set! v i (generator))
+            (fill-vector-loop v (+ i 1)))
+          v))
     (fill-vector-loop (make-vector size) 0)))
   
 ;; ==============================================
@@ -473,7 +496,7 @@
   (vector-set! $signal 1 has-value))
 
 (define (signal-up-to-date? $signal)
-   (vector-ref $signal 2))
+  (vector-ref $signal 2))
 
 (define (signal-up-to-date! $signal up-to-date)
   (vector-set! $signal 2 up-to-date))
@@ -506,9 +529,9 @@
   (if all-parents-have-values?
       (let ((value-provider (signal-value-provider $signal))
             (parent-values (map signal-value parents)))
-           (signal-value! $signal (apply value-provider parent-values))
-           (signal-up-to-date! $signal #t)
-           (for-each (lambda ($child) (signal-up-to-date! $child #f)) children))
+        (signal-value! $signal (apply value-provider parent-values))
+        (signal-up-to-date! $signal #t)
+        (for-each (lambda ($child) (signal-up-to-date! $child #f)) children))
       #f))
       
 
@@ -591,11 +614,11 @@
   (newline) (display string) (newline))
 
 (define (user-print object)
-  (if (compound-procedure? object)
-      (display (list 'compound-procedure
-                     (procedure-parameters object)
-                     (procedure-body object)
-                     '<procedure-env>))
+  (if (native-procedure? object)
+      (display (list 'native-procedure
+                     (native-procedure-parameters object)
+                     (native-procedure-body object)
+                     '<native-procedure-env>))
       (display object)))
 
 (define the-global-environment (setup-environment))
