@@ -9,7 +9,7 @@
 ; Instruction types
 ; -----------------
 
-(define operation make-op)
+(define operation make-op2)
 (define switch make-sw)
 (define call make-cl)
 (define ret make-rt)
