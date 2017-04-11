@@ -156,13 +156,41 @@
                               (ports (port (link 11 0))))
                    (ret 1)))
 
+;; Multi argument sample
+(define multi-arg-call
+  (instructions
+   ; 0
+   (make-call-store)
+   ; Main function
+   ; 1
+   (call 4
+         ; Destination
+         (ports
+          (port (link 3 0)) (port (link 3 1))
+          (port (link 4 0)) (port (link 4 1)))
+         ; Return
+         (ports (port (link 2 0)) (port (link 2 1))))
+   ; Body
+   ; 2
+   (operation 2 (lambda (res1 res2)
+                  (display "result 1: " ) (display res1)
+                  (display " result 2: ") (display res2)
+                  (res))
+              (ports ))
+   ; 3
+   (operation 2 (lambda (a b) (res (+ a b))) (ports (port (link 5 0))))
+   ; 4
+   (operation 2 (lambda (a b) (res (- a b))) (ports (port (link 5 1))))
+   ; 5
+   (ret 2)))
+
 (run-program test-operation 0 3 2) (newline)
 (run-program test-switch 0 false) (newline)
 (run-program test-call 1 5) (newline)
 (run-program factorial 10 5) (newline)
 (newline)
 (run-program fibonacci 1 20) (newline)
-
+(run-program multi-arg-call 1 10 20 300 400)
 ;; 
 
 (define is-even?
