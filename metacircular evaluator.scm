@@ -280,11 +280,16 @@
               (ports (port (link 1 0)))
               )
    ;; operation with index 1 : lambda that displays and returns an empty result result
-   (operation 1 (lambda (x) (display "Inside data-flow-procedure!") (display x) (newline) (list)) (ports))
+   (operation 1 (lambda (x) (display x) (newline) (list)) (ports))
    (ret 1)
    )
   )
-  (list 'dataflowprocedure dataflow-procedure))
+  ;; how to extract the return value here? 
+  (define execution
+    (lambda arguments
+      (let (program-arguments (append (list dataflow-procedure 0) arguments))
+        (
+  (list 'dataflowprocedure lambda))
 
 (define (dataflow-procedure? p)
   (tagged-list? p 'dataflowprocedure))
@@ -292,8 +297,11 @@
 (define (dataflow-procedure-extract p) (cadr p))
 
 (define (apply-dataflow-procedure procedure arguments)
+  ;; extract the dataflow procedure from the list
   (define dataflow-procedure (dataflow-procedure-extract procedure))
+  ;; prep the dataflow arguments: dataflow procedure + index of main instruction + remaining arguments
   (define program-arguments (append (list dataflow-procedure 0) arguments))
+  ;; 
   (apply run-program program-arguments))
 
 (define (native-procedure? p)
