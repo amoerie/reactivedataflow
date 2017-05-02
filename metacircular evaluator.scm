@@ -4,11 +4,16 @@
 
 ; Instruction types
 ; -----------------
-
 (define operation make-op)
 (define switch make-sw)
 (define call make-cl)
 (define ret make-rt)
+
+;; utility functions
+(define (index-of xs x)
+    (cond ((null? xs) -1)
+          ((eq? (car xs) x) 0)
+          (else (+ 1 (index-of (cdr xs) x)))))
 
 ;;
 ;;toegevoegd
@@ -474,7 +479,6 @@
 ;; Object structure: [
 ;;                    value          : any,         
 ;;                    has-value?     : boolean
-;;                    up-to-date?    : boolean,
 ;;                    parents        : [signal],
 ;;                    value-provider : val1, val2, ... => value,
 ;;                    children       : [signal]
@@ -482,7 +486,7 @@
 ;; The value-provider parameter is a function that takes the value from each parent signal and returns the new value for this derived signal
 ;;
 (define (make-signal parents value-provider)
-  (define $signal (list->vector (list null #f #f parents value-provider '())))
+  (define $signal (list->vector (list null #f parents value-provider '())))
   (for-each (lambda ($parent) (signal-add-child! $parent $signal)) parents)
   $signal)
 
@@ -501,45 +505,20 @@
 (define (signal-has-value! $signal has-value)
   (vector-set! $signal 1 has-value))
 
-(define (signal-up-to-date? $signal)
+(define (signal-parents $signal)
   (vector-ref $signal 2))
 
-(define (signal-up-to-date! $signal up-to-date)
-  (vector-set! $signal 2 up-to-date))
-
-(define (signal-parents $signal)
+(define (signal-value-provider $signal)
   (vector-ref $signal 3))
 
-(define (signal-value-provider $signal)
+(define (signal-children $signal)
   (vector-ref $signal 4))
 
-(define (signal-children $signal)
-  (vector-ref $signal 5))
-
 (define (signal-children! $signal children)
-  (vector-set! $signal 5 children))
+  (vector-set! $signal 4 children))
 
 (define (signal-add-child! $signal $child)
-  (signal-children! $signal (cons $child (signal-children $signal))))
-
-;;
-;; Recomputes the value of the provided signal, provided all parents have values
-;; When the value is set, it flags the signal as being up to date
-;; and flags every child as being NOT up to date
-;;
-(define (signal-update! $signal)
-  (define parents (signal-parents $signal))
-  (define children (signal-children $signal))
-  (define parents-have-values (map signal-has-value? parents))
-  (define all-parents-have-values? (foldl and-2 #t parents-have-values))
-  (if all-parents-have-values?
-      (let ((value-provider (signal-value-provider $signal))
-            (parent-values (map signal-value parents)))
-        (signal-value! $signal (apply value-provider parent-values))
-        (signal-up-to-date! $signal #t)
-        (for-each (lambda ($child) (signal-up-to-date! $child #f)) children))
-      #f))
-      
+  (signal-children! $signal (cons $child (signal-children $signal))))   
 
 ;; ==============================================
 ;; Built in signals
@@ -551,7 +530,6 @@
 ;;
 (define $current-seconds (make-signal '() current-seconds))
 (define (current-seconds-loop)
-  (signal-up-to-date! $current-seconds #f)
   (sleep 0.5)
   (current-seconds-loop))
 
@@ -561,7 +539,6 @@
 ;;
 (define $random-integer (make-signal '() (lambda () (random 1 100))))
 (define (random-integer-loop)
-  (signal-up-to-date! $random-integer #f)
   (sleep (random 1 10))
   (random-integer-loop))
 
@@ -576,12 +553,6 @@
         accumulator
         (topological-sort (append accumulator next-children) (foldl append '() (map signal-children next-children)))))
   (topological-sort '() source-signals))
-
-(define (update-signals-loop)
-  (define signals (get-topologically-sorted-signals))
-  (for-each signal-update! (filter (compose not signal-up-to-date?) signals))
-  (sleep 0.05)
-  (update-signals-loop))
 
 ;; ==============================================
 ;; Lifting
@@ -645,6 +616,13 @@
   (define result (cons input output))
   (print-result result))
 
+;; ====================================
+;;        INITIAL PROGRAM INPUTS
+;;
+;; This evaluates any instructions before setting up the signals in the dataflow system
+;; After these initial inputs, no new signals can be added 
+;; ====================================
+
 (define program-inputs
   (list
    '(define x 18)
@@ -653,26 +631,59 @@
    '(test 1 2 3)
    '(define current-seconds-even (lift even? $current-seconds))
    'current-seconds-even
-   '(value current-seconds-even)
   )
 )
-
 (for-each evaluate program-inputs)
 
+;; ====================================
+;;        DATAFLOW INSTRUCTIONS
+;;
+;; Once all signals are known, they can be converted into dataflow instructions
+;; Every instruction represents one signal
+;; ====================================
+;; The flat list of topologically sorted signals
+(define topologically-sorted-signals (get-topologically-sorted-signals))
 
+;; Returns a unique index per signal that identifies the associated dataflow operation
+(define (get-signal-operation-index $signal)
+  (index-of topologically-sorted-signals $signal))
 
-;;1. Signalen definiëren
-;;2. Signalen topologisch sorteren
-;;3. Signalen omzetten naar Dataflow instructies
-;;4. Start the whole thing
+;; Returns the argument index that the provided $signal should use to send its new value to the provided $child (this will be used for the port of the $signal operation)
+(define (get-signal-operation-argument-index $signal $child)
+  (index-of (signal-parents $child) $signal))
 
-        
-;; keep built in signals up to date in separate threads
-;;(display "Booting current-seconds loop")
-;;(thread current-seconds-loop)
-;;(display "Booting random-integer loop")
-;;(thread random-integer-loop)
-;;(display "Booting update-signals loop")
-;;(thread update-signals-loop)
-;;(display "Booting driver loop")
-;;(driver-loop)
+;; (operation number-of-inputs lambda ports)
+;;
+;; The lambda takes n arguments, where n = number-of-inputs, and sends the output to each port defined in the ports
+
+;; (ports port1 port2 port3 ...)
+;; (port link)
+;; 
+;; link = a reference to an argument of another instruction
+
+;; (link address port-number)
+;;
+;; address = index of the instruction, port-number = argument-index of the instruction
+
+;; For each signal:
+;; operation with index i : lambda that takes p arguments where p = # parents
+(define (make-signal-operation $signal)
+  (define parents (signal-parents $signal))
+  (define children (signal-children $signal))
+  (define value-provider (signal-value-provider $signal))
+  (define (make-signal-operation-output-port $child)
+    (port (link (get-signal-operation-index $child)
+                (get-signal-operation-argument-index $signal $child))))
+
+  ;; the number of arguments of the dataflow operation is equal to the number of parent signals
+  (define operation-number-of-args (length parents))
+
+  ;; executing a signal means computing the new value using the value-provider, updating the state of the signal and passing the new value to the children
+  (define operation-lambda (lambda parent-values
+                (let ((value (apply value-provider parent-values)))
+                  (signal-value! $signal value)
+                  (list value))))
+
+  ;; for each child (dependent signal) we create a port which identifies the operation index and argument index
+  (define operation-ports (apply ports (map make-signal-operation-output-port children)))
+  (operation operation-number-of-args operation-lambda operation-ports))
