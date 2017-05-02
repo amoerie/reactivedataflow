@@ -58,8 +58,6 @@
 (define (apply-in-scope procedure arguments)
   (cond ((primitive-procedure? procedure)
          (apply-primitive-procedure procedure arguments))
-        ((dataflow-procedure? procedure)
-         (apply-dataflow-procedure procedure arguments))
         ((native-procedure? procedure)
          (eval-sequence
           (native-procedure-body procedure)
@@ -291,19 +289,6 @@
 ;;        (
 ;;  (list 'dataflowprocedure lambda))
   native-procedure)
-
-(define (dataflow-procedure? p)
-  (tagged-list? p 'dataflowprocedure))
-
-(define (dataflow-procedure-extract p) (cadr p))
-
-(define (apply-dataflow-procedure procedure arguments)
-  ;; extract the dataflow procedure from the list
-  (define dataflow-procedure (dataflow-procedure-extract procedure))
-  ;; prep the dataflow arguments: dataflow procedure + index of main instruction + remaining arguments
-  (define program-arguments (append (list dataflow-procedure 0) arguments))
-  ;; 
-  (apply run-program program-arguments))
 
 (define (native-procedure? p)
   (tagged-list? p 'nativeprocedure))
@@ -654,17 +639,33 @@
   (print-output (cdr result)))
 
 (define the-global-environment (setup-environment))
-       
+
+(define (evaluate input)
+  (define output (eval input the-global-environment))
+  (define result (cons input output))
+  (print-result result))
+
 (define program-inputs
   (list
    '(define x 18)
    'x
+   '(define (test a b c) (+ a b c))
+   '(test 1 2 3)
+   '(define current-seconds-even (lift even? $current-seconds))
+   'current-seconds-even
+   '(value current-seconds-even)
   )
 )
-(define program-outputs (map (lambda (instruction) (eval instruction the-global-environment)) program-inputs))
-(define results (map cons program-inputs program-outputs))
-(for-each print-result results)
-        
+
+(for-each evaluate program-inputs)
+
+
+
+;;1. Signalen definiëren
+;;2. Signalen topologisch sorteren
+;;3. Signalen omzetten naar Dataflow instructies
+;;4. Start the whole thing
+
         
 ;; keep built in signals up to date in separate threads
 ;;(display "Booting current-seconds loop")
