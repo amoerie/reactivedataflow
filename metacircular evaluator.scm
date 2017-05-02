@@ -273,23 +273,24 @@
 (define (make-procedure parameters body env)
   (define native-procedure (list 'nativeprocedure parameters body env))
   ;; return a set of dataflow instructions which, when executed, will return the proper value
-  (define dataflow-procedure (instructions
-   ;; operation with index 0 : lambda that executes the procedure in our environment
-   (operation (length parameters)
-              (lambda args (list (apply-in-scope native-procedure args)))
-              (ports (port (link 1 0)))
-              )
-   ;; operation with index 1 : lambda that displays and returns an empty result result
-   (operation 1 (lambda (x) (display x) (newline) (list)) (ports))
-   (ret 1)
-   )
-  )
+;;  (define dataflow-procedure (instructions
+;;   ;; operation with index 0 : lambda that executes the procedure in our environment
+;;   (operation (length parameters)
+;;              (lambda args (list (apply-in-scope native-procedure args)))
+;;              (ports (port (link 1 0)))
+;;              )
+;;  ;; operation with index 1 : lambda that displays and returns an empty result result
+;;   (operation 1 (lambda (x) (display x) (newline) (list)) (ports))
+;;   (ret 1)
+;;  )
+;; )
   ;; how to extract the return value here? 
-  (define execution
-    (lambda arguments
-      (let (program-arguments (append (list dataflow-procedure 0) arguments))
-        (
-  (list 'dataflowprocedure lambda))
+;;  (define execution
+;;    (lambda arguments
+;;      (let (program-arguments (append (list dataflow-procedure 0) arguments))
+;;        (
+;;  (list 'dataflowprocedure lambda))
+  native-procedure)
 
 (define (dataflow-procedure? p)
   (tagged-list? p 'dataflowprocedure))
@@ -616,48 +617,61 @@
 ;; ====================================
 ;;                REPL
 ;; ====================================
-(define input-prompt ";;; M-Eval input:")
-(define output-prompt ";;; M-Eval value:")
+;;(define input-prompt ";;; M-Eval input:")
+;;(define output-prompt ";;; M-Eval value:")
 
-(define (driver-loop)
-  (prompt-for-input input-prompt)
-  (let ((input (read)))
-    (let ((output (eval input the-global-environment)))
-      (announce-output output-prompt)
-      (user-print output)))
-  (driver-loop))
+;;(define (driver-loop)
+;;  (prompt-for-input input-prompt)
+;;  (let ((input (read)))
+;;    (let ((output (eval input the-global-environment)))
+;;      (announce-output output-prompt)
+;;      (user-print output)))
+;;  (driver-loop))
+;;
+;;(define (prompt-for-input string)
+;;  (newline) (newline) (display string) (newline))
+;;
+;;(define (announce-output string)
+;;  (newline) (display string) (newline))
+;;
 
-(define (prompt-for-input string)
-  (newline) (newline) (display string) (newline))
+(define (print-input input)
+  (newline)
+  (display input))
 
-(define (announce-output string)
-  (newline) (display string) (newline))
-
-(define (user-print object)
-  (if (native-procedure? object)
+(define (print-output output)
+  (newline)
+  (if (native-procedure? output)
       (display (list 'native-procedure
-                     (native-procedure-parameters object)
-                     (native-procedure-body object)
+                     (native-procedure-parameters output)
+                     (native-procedure-body output)
                      '<native-procedure-env>))
-      (display object)))
+      (display output))
+  (newline))
+
+(define (print-result result)
+  (print-input (car result))
+  (print-output (cdr result)))
 
 (define the-global-environment (setup-environment))
-
+       
+(define program-inputs
+  (list
+   '(define x 18)
+   'x
+  )
+)
+(define program-outputs (map (lambda (instruction) (eval instruction the-global-environment)) program-inputs))
+(define results (map cons program-inputs program-outputs))
+(for-each print-result results)
+        
+        
 ;; keep built in signals up to date in separate threads
-(display "Booting current-seconds loop")
-(thread current-seconds-loop)
-(display "Booting random-integer loop")
-(thread random-integer-loop)
-(display "Booting update-signals loop")
-(thread update-signals-loop)
-(display "Booting driver loop")
-(driver-loop)
-
-
-
-
-
-
-
-
-
+;;(display "Booting current-seconds loop")
+;;(thread current-seconds-loop)
+;;(display "Booting random-integer loop")
+;;(thread random-integer-loop)
+;;(display "Booting update-signals loop")
+;;(thread update-signals-loop)
+;;(display "Booting driver loop")
+;;(driver-loop)
