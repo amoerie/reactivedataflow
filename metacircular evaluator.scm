@@ -571,7 +571,7 @@
   (make-signal-wrapper (make-signal parents value-provider)))
   
 ;; ====================================
-;;                REPL
+;;                REPL: no longer supported
 ;; ====================================
 ;;(define input-prompt ";;; M-Eval input:")
 ;;(define output-prompt ";;; M-Eval value:")
@@ -687,3 +687,10 @@
   ;; for each child (dependent signal) we create a port which identifies the operation index and argument index
   (define operation-ports (apply ports (map make-signal-operation-output-port children)))
   (operation operation-number-of-args operation-lambda operation-ports))
+
+(define (make-instructions)
+  (define operations (map make-signal-operation topologically-sorted-signals))
+  (apply instructions operations))
+
+
+
