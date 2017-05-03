@@ -10,10 +10,14 @@
 (define ret make-rt)
 
 ;; utility functions
+;; Returns the first index of an element in a list or -1 if it is not found
 (define (index-of xs x)
     (cond ((null? xs) -1)
           ((eq? (car xs) x) 0)
           (else (+ 1 (index-of (cdr xs) x)))))
+
+;; Single parameter function that simply returns its parameter
+(define (identity-function value) value)
 
 ;;
 ;;toegevoegd
@@ -528,19 +532,27 @@
 ;; $current-seconds
 ;; : emits the current seconds since 1st January 1970, every second
 ;;
-(define $current-seconds (make-signal '() current-seconds))
-(define (current-seconds-loop)
-  (sleep 0.5)
-  (current-seconds-loop))
+(define $current-seconds (make-signal '() identity-function))
+(define (current-seconds-loop dataflow-runtime)
+  (define index (get-signal-operation-index $current-seconds))
+  (let loop ()
+    (sleep 0.5)
+    (define new-value (current-seconds))
+    (runtime-add-inputs! dataflow-runtime index (list new-value))
+    (loop)))
 
 ;;
 ;; $random
 ;; : emits a random number between 1 and 100, every (random 1 .. 10 seconds)
 ;;
-(define $random-integer (make-signal '() (lambda () (random 1 100))))
-(define (random-integer-loop)
-  (sleep (random 1 10))
-  (random-integer-loop))
+(define $random-integer (make-signal '() identity-function))
+(define (random-integer-loop dataflow-runtime)
+  (define index (get-signal-operation-index $random-integer))
+  (let loop ()
+    (sleep (random 1 10))
+    (define new-value (random 1 100))
+    (runtime-add-inputs! dataflow-runtime index (list new-value))
+    (loop)))
 
 ;; ==============================================
 ;; Signal graph + update loop
@@ -675,8 +687,12 @@
     (port (link (get-signal-operation-index $child)
                 (get-signal-operation-argument-index $signal $child))))
 
-  ;; the number of arguments of the dataflow operation is equal to the number of parent signals
-  (define operation-number-of-args (length parents))
+  ;; the number of arguments of the dataflow operation is equal to the number of parent signals.
+  ;; Source signals technically have no parents, so their value provider is just the identity function (lambda (x) x)
+  ;; This does mean that while they don't have any parents, their operation-number-of-args has to be 1
+  (define operation-number-of-args
+    (cond ((eq? (member $signal source-signals) #f) (length parents))
+          (else 1)))
 
   ;; executing a signal means computing the new value using the value-provider, updating the state of the signal and passing the new value to the children
   (define operation-lambda (lambda parent-values
@@ -692,5 +708,33 @@
   (define operations (map make-signal-operation topologically-sorted-signals))
   (apply instructions operations))
 
+(define (create-dataflow-runtime instructions)
+  (make-runtime 0 instructions))
 
+;; Infinitely tries to process tokens in the dataflow runtime
+;; Sleeps a few ms between every loop
+;; Skips processing when there are no tokens to process
+(define (dataflow-runtime-processor-loop dataflow-runtime)
+  (let loop ()
+    (when (not (runtime-finished? dataflow-runtime))
+      (runtime-process-token! dataflow-runtime))
+    (sleep 0.05)
+    (loop)))
 
+(define (startup-dataflow-runtime)
+  (newline) (display "Creating dataflow instructions")
+  (define dataflow-instructions (make-instructions))
+  (newline) (display "OK Created dataflow instructions")
+
+  (newline) (display "Creating dataflow runtime")
+  (define dataflow-runtime (create-dataflow-runtime dataflow-instructions))
+  (newline) (display "OK Created dataflow runtime")
+
+  (newline) (display "Starting up current-seconds-loop")
+  (thread (lambda () (current-seconds-loop dataflow-runtime)))
+  (newline) (display "Starting up random-integer-loop")
+  (thread (lambda () (random-integer-loop dataflow-runtime)))
+  (newline) (display "Starting up dataflow-runtime-processor-loop")
+  (thread (lambda () (dataflow-runtime-processor-loop dataflow-runtime))))
+
+(startup-dataflow-runtime)
