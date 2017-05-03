@@ -564,7 +564,8 @@
   (define (topological-sort accumulator next-children)
     (if (null? next-children)
         accumulator
-        (topological-sort (append accumulator next-children) (foldl append '() (map signal-children next-children)))))
+        (topological-sort (append accumulator (filter (lambda (child) (not (member child accumulator))) next-children))
+                          (foldl append '() (map signal-children next-children)))))
   (topological-sort '() source-signals))
 
 ;; ==============================================
@@ -642,8 +643,9 @@
    'x
    '(define (test a b c) (+ a b c))
    '(test 1 2 3)
-   '(define current-seconds-even (lift even? $current-seconds))
+   ;;'(define current-seconds-even (lift even? $current-seconds))
    '(define current-date (lift seconds->date $current-seconds))
+   '(define date-and-random-integer (lift cons $current-seconds current-date))
    ;;'current-seconds-even
   )
 )
@@ -705,6 +707,7 @@
   ;; executing a signal means computing the new value using the value-provider, updating the state of the signal and passing the new value to the children
   (define operation-lambda (lambda parent-values
                 (let ((value (apply value-provider parent-values)))
+                  ;;(newline) (display "New value: ") (display value)
                   (signal-value! $signal value)
                   (list value))))
 
