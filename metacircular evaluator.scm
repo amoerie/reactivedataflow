@@ -421,6 +421,7 @@
         (list '- -)
         (list '/ /)
         (list 'even? even?)
+        (list 'seconds->date seconds->date)
         (list 'value (lambda (exp) (signal-value (signal-wrapper-unwrap exp))))
         ;;      more primitives
         ))
@@ -641,7 +642,8 @@
    'x
    '(define (test a b c) (+ a b c))
    '(test 1 2 3)
-   ;;'(define current-seconds-even (lift even? $current-seconds))
+   '(define current-seconds-even (lift even? $current-seconds))
+   '(define current-date (lift seconds->date $current-seconds))
    ;;'current-seconds-even
   )
 )
@@ -677,15 +679,21 @@
 ;;
 ;; address = index of the instruction, port-number = argument-index of the instruction
 
+(define (make-empty-return-operation)
+  (operation 1 (lambda (x) (list)) (ports )))
+
+(define (get-empty-return-operation-index)
+  (length topologically-sorted-signals)) 
+
 ;; For each signal:
 ;; operation with index i : lambda that takes p arguments where p = # parents
 (define (make-signal-operation $signal)
   (define parents (signal-parents $signal))
   (define children (signal-children $signal))
   (define value-provider (signal-value-provider $signal))
-  (define (make-signal-operation-output-port $child)
-    (port (link (get-signal-operation-index $child)
-                (get-signal-operation-argument-index $signal $child))))
+  (define (make-signal-operation-output-link $child)
+    (link (get-signal-operation-index $child)
+                (get-signal-operation-argument-index $signal $child)))
 
   ;; the number of arguments of the dataflow operation is equal to the number of parent signals.
   ;; Source signals technically have no parents, so their value provider is just the identity function (lambda (x) x)
@@ -700,12 +708,15 @@
                   (signal-value! $signal value)
                   (list value))))
 
-  ;; for each child (dependent signal) we create a port which identifies the operation index and argument index
-  (define operation-ports (apply ports (map make-signal-operation-output-port children)))
+  ;; for each child (dependent signal) we create a link which identifies the operation index and argument index
+  ;; If a certain signal has no children, we simply redirect the output to the empty return operation
+  (define operation-ports
+    (cond ((null? children) (ports (port (link (get-empty-return-operation-index) 0))))
+          (else (ports (apply port (map make-signal-operation-output-link children))))))
   (operation operation-number-of-args operation-lambda operation-ports))
 
 (define (make-instructions)
-  (define operations (map make-signal-operation topologically-sorted-signals))
+  (define operations (append (map make-signal-operation topologically-sorted-signals) (list (make-empty-return-operation))))
   (apply instructions operations))
 
 (define (create-dataflow-runtime instructions)
