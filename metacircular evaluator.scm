@@ -641,8 +641,8 @@
    'x
    '(define (test a b c) (+ a b c))
    '(test 1 2 3)
-   '(define current-seconds-even (lift even? $current-seconds))
-   'current-seconds-even
+   ;;'(define current-seconds-even (lift even? $current-seconds))
+   ;;'current-seconds-even
   )
 )
 (for-each evaluate program-inputs)
