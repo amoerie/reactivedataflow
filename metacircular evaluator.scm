@@ -534,12 +534,12 @@
 ;; : emits the current seconds since 1st January 1970, every second
 ;;
 (define $current-seconds (make-signal '() identity-function))
-(define (current-seconds-loop dataflow-runtime)
+(define (current-seconds-loop dataflow-runtime dataflow-context)
   (define index (get-signal-operation-index $current-seconds))
   (let loop ()
     (sleep 0.5)
     (define new-value (current-seconds))
-    (runtime-add-inputs! dataflow-runtime index (list new-value))
+    (runtime-add-inputs! dataflow-runtime dataflow-context index (list new-value))
     (loop)))
 
 ;;
@@ -547,12 +547,12 @@
 ;; : emits a random number between 1 and 100, every (random 1 .. 10 seconds)
 ;;
 (define $random-integer (make-signal '() identity-function))
-(define (random-integer-loop dataflow-runtime)
+(define (random-integer-loop dataflow-runtime dataflow-context)
   (define index (get-signal-operation-index $random-integer))
   (let loop ()
     (sleep (random 1 10))
     (define new-value (random 1 100))
-    (runtime-add-inputs! dataflow-runtime index (list new-value))
+    (runtime-add-inputs! dataflow-runtime dataflow-context index (list new-value))
     (loop)))
 
 ;; ==============================================
@@ -584,27 +584,6 @@
   (define value-provider (lambda parent-values (apply-in-scope operator parent-values)))
   (make-signal-wrapper (make-signal parents value-provider)))
   
-;; ====================================
-;;                REPL: no longer supported
-;; ====================================
-;;(define input-prompt ";;; M-Eval input:")
-;;(define output-prompt ";;; M-Eval value:")
-
-;;(define (driver-loop)
-;;  (prompt-for-input input-prompt)
-;;  (let ((input (read)))
-;;    (let ((output (eval input the-global-environment)))
-;;      (announce-output output-prompt)
-;;      (user-print output)))
-;;  (driver-loop))
-;;
-;;(define (prompt-for-input string)
-;;  (newline) (newline) (display string) (newline))
-;;
-;;(define (announce-output string)
-;;  (newline) (display string) (newline))
-;;
-
 (define (print-input input)
   (newline)
   (display input))
@@ -639,13 +618,13 @@
 
 (define program-inputs
   (list
-   '(define x 18)
-   'x
-   '(define (test a b c) (+ a b c))
-   '(test 1 2 3)
+   ;;'(define x 18)
+   ;;'x
+   ;;'(define (test a b c) (+ a b c))
+   ;;'(test 1 2 3)
    ;;'(define current-seconds-even (lift even? $current-seconds))
    '(define current-date (lift seconds->date $current-seconds))
-   '(define date-and-random-integer (lift cons $current-seconds current-date))
+   '(define test (lift cons $random-integer current-date))
    ;;'current-seconds-even
   )
 )
@@ -707,7 +686,7 @@
   ;; executing a signal means computing the new value using the value-provider, updating the state of the signal and passing the new value to the children
   (define operation-lambda (lambda parent-values
                 (let ((value (apply value-provider parent-values)))
-                  ;;(newline) (display "New value: ") (display value)
+                  (newline) (display "New value: ") (display value)
                   (signal-value! $signal value)
                   (list value))))
 
@@ -744,11 +723,37 @@
   (define dataflow-runtime (create-dataflow-runtime dataflow-instructions))
   (newline) (display "OK Created dataflow runtime")
 
+  (newline) (display "Creating shared dataflow context for all signals")
+  (define dataflow-context (context-manager-get! (runtime-context-manager dataflow-runtime)))
+  (newline) (display "OK Created shared dataflow context for all signals")
+  
   (newline) (display "Starting up current-seconds-loop")
-  (thread (lambda () (current-seconds-loop dataflow-runtime)))
+  (thread (lambda () (current-seconds-loop dataflow-runtime dataflow-context)))
   (newline) (display "Starting up random-integer-loop")
-  (thread (lambda () (random-integer-loop dataflow-runtime)))
+  (thread (lambda () (random-integer-loop dataflow-runtime dataflow-context)))
   (newline) (display "Starting up dataflow-runtime-processor-loop")
   (thread (lambda () (dataflow-runtime-processor-loop dataflow-runtime))))
 
 (startup-dataflow-runtime)
+
+;; ====================================
+;;                REPL
+;; ====================================
+(define input-prompt ";;; M-Eval input:")
+(define output-prompt ";;; M-Eval value:")
+
+(define (driver-loop)
+  (prompt-for-input input-prompt)
+  (let ((input (read)))
+    (let ((output (eval input the-global-environment)))
+      (announce-output output-prompt)
+      (print-output output)))
+  (driver-loop))
+
+(define (prompt-for-input string)
+  (newline) (newline) (display string) (newline))
+
+(define (announce-output string)
+  (newline) (display string) (newline))
+
+(driver-loop)
