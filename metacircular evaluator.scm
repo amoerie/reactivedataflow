@@ -534,12 +534,15 @@
 ;; : emits the current seconds since 1st January 1970, every second
 ;;
 (define $current-seconds (make-signal '() identity-function))
-(define (current-seconds-loop dataflow-runtime dataflow-context)
+(define (current-seconds-loop callback)
   (define index (get-signal-operation-index $current-seconds))
   (let loop ()
     (sleep 0.5)
     (define new-value (current-seconds))
-    (runtime-add-inputs! dataflow-runtime dataflow-context index (list new-value))
+    (when (or (not (signal-has-value? $current-seconds))
+              (not (eq? new-value (signal-value $current-seconds))))
+      (signal-value! $current-seconds new-value)
+      (callback))
     (loop)))
 
 ;;
@@ -547,12 +550,13 @@
 ;; : emits a random number between 1 and 100, every (random 1 .. 10 seconds)
 ;;
 (define $random-integer (make-signal '() identity-function))
-(define (random-integer-loop dataflow-runtime dataflow-context)
+(define (random-integer-loop callback)
   (define index (get-signal-operation-index $random-integer))
   (let loop ()
     (sleep (random 1 10))
     (define new-value (random 1 100))
-    (runtime-add-inputs! dataflow-runtime dataflow-context index (list new-value))
+    (signal-value! $random-integer new-value)
+    (callback)
     (loop)))
 
 ;; ==============================================
@@ -704,6 +708,18 @@
 (define (create-dataflow-runtime instructions)
   (make-runtime 0 instructions))
 
+;; Creates 1 new dataflow context + input tokens for each source signal of their current values and pushes those into the token queue
+(define (push-source-signals-current-values dataflow-runtime)
+  (define dataflow-context (context-manager-get! (runtime-context-manager dataflow-runtime)))
+  (for-each (lambda ($source-signal) (push-source-signals-current-value $source-signal dataflow-runtime dataflow-context)) source-signals))
+
+;; Creates a new input token for the given $source-signal (only if the source signal has a value)
+(define (push-source-signals-current-value $source-signal dataflow-runtime dataflow-context)
+  (when (signal-has-value? $source-signal)
+    (let ((index (get-signal-operation-index $source-signal))
+          (value (signal-value $source-signal)))
+      (runtime-add-inputs! dataflow-runtime dataflow-context index (list value)))))
+
 ;; Infinitely tries to process tokens in the dataflow runtime
 ;; Sleeps a few ms between every loop
 ;; Skips processing when there are no tokens to process
@@ -723,14 +739,12 @@
   (define dataflow-runtime (create-dataflow-runtime dataflow-instructions))
   (newline) (display "OK Created dataflow runtime")
 
-  (newline) (display "Creating shared dataflow context for all signals")
-  (define dataflow-context (context-manager-get! (runtime-context-manager dataflow-runtime)))
-  (newline) (display "OK Created shared dataflow context for all signals")
+  (define source-signal-callback (lambda () (push-source-signals-current-values dataflow-runtime)))
   
   (newline) (display "Starting up current-seconds-loop")
-  (thread (lambda () (current-seconds-loop dataflow-runtime dataflow-context)))
+  (thread (lambda () (current-seconds-loop source-signal-callback)))
   (newline) (display "Starting up random-integer-loop")
-  (thread (lambda () (random-integer-loop dataflow-runtime dataflow-context)))
+  (thread (lambda () (random-integer-loop source-signal-callback)))
   (newline) (display "Starting up dataflow-runtime-processor-loop")
   (thread (lambda () (dataflow-runtime-processor-loop dataflow-runtime))))
 
