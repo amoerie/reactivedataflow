@@ -1,0 +1,194 @@
+\ProvidesPackage{vub}[2006/11/11 \space ver 0.1  Kevin Pinte, kpinte@infogroep.be]
+
+%===========================%
+%               VUB-Package:        
+%-----------------------------------------------%
+%                                                       
+% include de package als volgt:                     
+%   \usepackage{vub}                                
+%                                                     
+% zet de gewenste variabelen juist:               
+%   \author{}                                      
+%   \title{}                                        
+%   \subtitle{}                                       
+%   \faculty{}                                    
+%   \department{}                             
+%   \promotortitle{}                             
+%   \advisortitle{}                            
+%   \promotor{}                                
+%   \advisors{}                                   
+%   \date{}                                      
+%                                              
+% volgende commands zijn beschikbaar:          
+%   \settaakheader  -> paginaheader                
+%   \makeassignment -> vub-stijl titelblad voor een taak   
+%   \maketheses     -> vub-stijl thesis template         
+%                                                  
+%===========================%
+
+
+% voor images en kleurtjes
+\usepackage{graphicx}
+%\usepackage[usenames]{color}
+
+% de officiele VUB-huisstijl kleuren
+\definecolor{pantone398}{cmyk}{0.7,0,1,0.28}
+\definecolor{pantone418}{cmyk}{0.3,0,0.31,0.75}
+\definecolor{pantone416}{cmyk}{0,0,0.16,0.50}
+\definecolor{pantone7531}{cmyk}{0,0.10,0.27,0.50}
+\definecolor{pantone576}{cmyk}{0.49,0,1,0.39}
+\definecolor{we}{cmyk}{0.49,0,1,0.39}
+
+% hiermee is de tekst in het vub-grijs
+% \color{pantone418}
+
+% zorg dat het ganse document in sans-serif is
+% cfr huisstijlgids
+%\renewcommand{\familydefault}{\sfdefault}
+
+% zorg dat alle wiskunde omgevingen in sans-serif staan
+% cfr huisstijlgids
+\usepackage{sansmath}
+\sansmath
+
+% variabelen en hun default values
+\gdef\@promotortitle{Promotortitle}
+\gdef\@advisortitle{Advisortitle}
+\gdef\@promotor{Promotorname}
+\gdef\@advisors{Advisorname}
+\gdef\@faculty{Faculty of Science}
+\gdef\@department{Department of Computer Science and Applied Computer Science}
+\gdef\@subtitle{Subtitle}
+
+\newenvironment{multiline}{\verbatim}{\verbatim}
+
+\def\promotor#1{\gdef\@promotor{#1}}
+\def\advisors#1{\gdef\@advisors{#1}}
+\def\faculty#1{\gdef\@faculty{#1}}
+\def\department#1{\gdef\@department{#1}}
+\def\subtitle#1{\gdef\@subtitle{#1}}
+\def\advisortitle#1{\gdef\@advisortitle{#1}}
+\def\promotortitle#1{\gdef\@promotortitle{#1}}
+
+
+% SIMPELE HOOFDING VOOR TAKEN
+\usepackage{fancyhdr}
+\def\settaakheader{
+\pagestyle{fancy}
+\fancyhead[R]{\scriptsize{\@subtitle~-~\@title}}
+\fancyhead[L]{\scriptsize{\@author}}
+\fancyfoot[C]{\thepage}
+}
+
+% TITEL PAGINA VOOR EEN TAAK:
+\def\makeassignment{
+\begin{titlepage}
+\enlargethispage*{1000pt}
+
+\vspace*{-36.6mm}{
+\hspace*{-30mm}{
+\includegraphics[width=75.5mm,height=15.25mm]{VUB_logo}
+}
+}
+
+\vspace*{-2.5mm}{
+\hspace*{-10mm}{
+\begin{tabular}{l|l}
+% Faculty
+& \parbox[t]{200pt}{
+\footnotesize{
+\parbox[t]{200pt}{
+\textsf{\MakeUppercase{\@faculty}}}} \\ 
+% Department
+\rule{0pt}{3mm}\tiny{
+\parbox[t]{200pt}{
+\textsf{\MakeUppercase{\@department}}}}} \\
+\rule{0pt}{80mm} & \rule{6pt}{0mm}
+% Title
+\huge{
+\parbox[b]{400pt}{
+\textsf{\@title}}} \\
+\rule{0pt}{25mm} \\
+\cline{2-2}
+\rule{0pt}{14mm}
+& \rule{6pt}{0mm}\begin{tabular}{l}
+% Subtitle
+\small{\parbox[t]{400pt}{\textsf{\@subtitle}}} \\
+% Author
+\rule{0pt}{7mm}\Large{\parbox[b]{400pt}{\textsf{\@author}}} \\
+\\
+\end{tabular} \\
+\cline{2-2}
+& \rule{6pt}{0mm}\begin{tabular}{l}
+\rule{0pt}{5mm} \\
+% Date
+\small{\parbox[t]{200pt}{\textsf{\@date}}} \\
+\end{tabular} \\
+\rule{0pt}{50mm} \\
+& \rule{6pt}{0mm} \begin{tabular}{lr}
+\rule{260pt}{0mm} & \includegraphics[width=43mm,height=43mm]{VUB_schild}
+\end{tabular}
+\end{tabular}
+}
+}
+\end{titlepage}
+}
+
+
+
+% TITEL PAGINA VOOR EEN THESIS:
+\def\maketheses{
+\begin{titlepage}
+\enlargethispage*{1000pt}
+
+\vspace*{-36.6mm}{
+\hspace*{-24.75mm}{
+\includegraphics[width=75.5mm,height=15.25mm]{VUB_logo}
+}
+}
+
+\vspace*{-2.5mm}{
+\hspace*{-3.5mm}{
+\begin{tabular}{l|l}
+
+% Faculty
+& \parbox[t]{600pt}{
+\footnotesize{
+\parbox[t]{600pt}{\textsf{\MakeUppercase{\@faculty}}}} \\
+% Department
+\rule{0pt}{3mm}\tiny{
+\parbox[t]{200pt}{
+\textsf{\MakeUppercase{\@department}}}}
+} \\
+\rule{0pt}{80mm}
+& \rule{6pt}{0mm}
+% Title
+\huge{\parbox[b]{400pt}{\textsf{\@title}}} \\
+\rule{0pt}{25mm} \\
+\cline{2-2}
+\rule{0pt}{14mm}
+& \rule{6pt}{0mm}\begin{tabular}{l}
+% Subtitle
+\footnotesize{\parbox[t]{400pt}{\textsf{\@subtitle}}} \\
+% Author
+\rule{0pt}{7mm}\Large{\parbox[t]{400pt}{\textsf{\@author}}} \\
+\\
+\end{tabular} \\
+\cline{2-2}
+& \rule{6pt}{0mm}\begin{tabular}{rl}
+\rule{0pt}{5mm} \\
+% Promotor(s)
+\textsf{\@promotortitle:} & \parbox[t]{200pt}{\textsf{\@promotor}} \\
+% Advisor(s)
+\textsf{\@advisortitle:} & \parbox[t]{200pt}{\textsf{\@advisors}} \\
+\end{tabular} \\
+\rule{0pt}{50mm} \\
+% Date
+& \rule{6pt}{0mm} \begin{tabular}{llr}
+\small{\parbox[b]{200pt}{\textsf{\@date}}} & \rule{60pt}{0mm} & \includegraphics[width=43mm,height=43mm]{VUB_schild}
+\end{tabular}
+\end{tabular}
+}
+}
+\end{titlepage}
+}
