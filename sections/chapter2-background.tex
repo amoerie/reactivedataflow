@@ -1,5 +1,58 @@
 
 \chapter{Background}
 
+\section{Reactive Programming}
+
+Reactive Programming is a software development paradigm focused on reactions, i.e. the handling of external events, user interactions, etc.  In this paradigm, the application state is derived from the previous state and any events that may occur, for example user interactions or current environmental factors. This deviates from more traditional approaches, where values and state can be written at any point and for any reason. In a reactive program however, the flow of dependencies between values must be recorded once, which can be seen as a (possibly cyclic!) directed graph. When a new value is recorded, it is appended to the end of the graph, where the new node "subscribes" to values from the source nodes.
+Whenever these source nodes produce new data, they will notify this node, at which point it can recompute what its own value should be. In this way, values ripple through the direct graph of nodes, updating nodes wherever they pass through. Note that values can only ever be appended at the end of the graph, i.e. add more derived values. Once such a "reactive node" - often called an observable or signal in literature - has been defined, it is impossible to modify the source nodes which will feed it data downwards in the graph. 
+
+\subsection{Example}
+
+The canonical metaphor for Reactive Programming is spreadsheets, which typically track changes across input cells and automatically recompute values in other cells if the formulas they contain reference the aforementioned input cells. In essence, cells "react" to modifications made in other cells if their formulas depend on them.
+Imagine a simple program in an imperative programming setting:
+
+\begin{lstlisting}
+	a = b + c
+\end{lstlisting}
+
+When this statement is executed, it assigns the result of adding b and c to the variable a, effectively mutating a. Note that this only happens once. A snapshot is taken of the current value of b and c, to determine the new value of variable a. Of course, this assumes that the variable b and c are provided to the program.
+\newline
+In a reactive programming setting, a would subscribe to the values of b and c, essentially asking to be notified whenever the variables b or c change, at which point the value of variable a changes. This process repeats every time the variables b or c are modified. Note that the value of a is undetermined until both b and c produce a value. 
+
+The implementation of this reactive mechanism can be provided by the language itself or by a framework or library. 
+
+\subsection{Advantages}
+
+A signal can be described as "values over time", in contrast with a variable which only holds its latest value, revealing no information about the time that value was provided or what changed it. 
+As it turns out, signals can be used to model almost any concept in software development:
+\begin{itemize}
+	\item mouse movements as a signal which emits the current position in real time
+	\item click events as a signal which emits event objects
+	\item the results of a database query as a signal which emits only one value
+    \item an infinite sequence as a signal which never stops emitting
+\end{itemize}
+
+Even though the underlying mechanism will still be identical to more traditional approaches (attaching event listeners to DOM events in HTML, opening and connecting to a WebSocket connection, etc.), the fact that all these concepts can be brought together under a single umbrella called "signals" allows for the modeling of higher order operators to map, combine and filter these flows of values in ways that were previously a lot harder.
+
+\section{Dataflow Programming}
+
+\subsection{Introduction}
+
+Dataflow Programming is a paradigm focused on the optimal, parallel execution of functions. In this paradigm, functions are seen as isolated units of code which should be able to execute whenever the necessary parameters have been provided. Contrary to imperative programming, functions are therefore not called directly, but rather whenever all of the parameters are present. The output of that function is then pushed into the "parameter queue" again, ready to be sent to the next function which takes it as its input. Function parameters are typically wrapped in tokens, which carry metadata information about which execution context they belong to, to isolate multiple calls to the same function from one another. In this way, the execution of functions in Dataflow Programming can also be seen as a direct graph of nodes where each node represents a function and each edge represents the output of a function being sent to another function. It is up to the dataflow engine to orchestrate the queue of tokens and functions so that functions are executed correctly and in the correct order.
+ A large difference with Reactive Programming is that Dataflow Programming puts the function call at the center stage, while Reactive Programming puts forward signals as the core concept of its paradigm. In other words, while both systems have the notion of a dependency graph, the nodes in their graphs carry different concepts: function calls and signals respectively.
+ 
+
+\subsection{Example}
+
+Imagine a simple program in an imperative programming setting:
+
+\begin{lstlisting}
+a = b + c
+d = a + b
+\end{lstlisting}
+
+This assumes that the variable b and c are provided to the program.
+In a traditional execution, the variable a would be set to the sum of b and c and the variable d would be set to the sum of a and b. Note that the sequence in which these operations are executed is of vital importance: switching the two statements would result in different values for the variable d!
+
 
 
