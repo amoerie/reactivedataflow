@@ -35,6 +35,7 @@ x                        ;; gets the value of x
 (lambda (a b) (+ a b))   ;; defines an anonymous procedure
 \end{lstlisting}
 
+\newpage
 For the reactive language, two new concepts were introduced to the metacircular evaluator:
 
 \begin{enumerate}
@@ -48,29 +49,143 @@ Signals and lift
 (lift + signal1 signal2) ;; creates a new signal that emits the sum of signal1 and signal2
 \end{lstlisting}
 
+\subsection{Sample programs}
+
+\begin{lstlisting}
+;; signal that emits the current date
+(define current-date (lift seconds->date current-seconds)) 
+
+;; prints the current value
+(value current-date)       
+
+;; signal that adds current seconds to random integer                                
+(define sec-rand (lift + current-seconds random-integer))  
+
+;; signal that emits whether the aforementioned signal is even
+(define sec-rand-even? (lift even? sec-rand))			   
+\end{lstlisting}
+
+These are some sample usages of the lift function and existing source signals. There is no limit to the amount of parents a signal can have or to the depth of the dependency chain. Note that the 'value' function is necessary to extract the current value of a signal, without this the signal wrapper would be returned by the evaluator. 
+
 \newpage
 \subsection{Implementation}
 
 When signals are created, they are registered with the parents as children. This implicitly creates a graph that tracks the dependencies between signals. A background loop constantly enumerates the signals, detecting stale children and computing new values for them by executing their lift function. This function is evaluated in the lexical scope of the Racket evaluator again, allowing for closures and other possible language constructs. 
 The reactive language provides a few sample source signals, which update automatically and have no parents. The signal 'current-seconds' is such an example, it emits every second a new value indicating the number of seconds since midnight UTC, January 1, 1970. Another signal called 'random-integer' produces random numbers between 1 and 100 in randomized time intervals. 
-All new signals have to be derived from at least one source signal, and must output a value when one of the parents emits a new value.
+All new signals have to be derived from at least one parent signal, and must output a value when one of the parents emits a new value.
 
-\subsection{Sample programs}
-
+\subsubsection{Creating a new signal}
 \begin{lstlisting}
-	;; signal that emits the current date
-	(define current-date (lift seconds->date current-seconds)) 
-	
-	;; prints the current value
-	(value current-date)       
-	
-	;; signal that adds current seconds to random integer                                
-	(define sec-rand (lift + current-seconds random-integer))  
-	
-	;; signal that emits whether the aforementioned signal is even
-	(define sec-rand-even? (lift even? sec-rand))			   
+;; ==============================================
+;; Signals: signals can derive from other signals 
+;;          taking their values as input and 
+;;          producing something of their own
+;; ==============================================
+;; Object structure: [
+;;   value          : any,         
+;;   has-value?     : boolean
+;;   up-to-date?    : boolean,
+;;   parents        : [signal],
+;;   value-provider : val1, val2, ... => value,
+;;   children       : [signal]
+;; ]
+(define (make-signal parents value-provider)
+  ;; make a vector representing the signal (see object structure above)
+  (define $signal 
+         (list->vector (list null #f #f parents value-provider '())))
+
+  ;; enumerate the parents and register the new child
+  (for-each (lambda ($parent) (signal-add-child! $parent $signal)) parents)
+
+  ;; return the newly created signal
+  $signal)
+\end{lstlisting}
+Signals are stored in memory as simple vectors, keeping a reference to both parents and children to facilitate the implementation of the update loop. 
+
+\newpage
+\subsubsection{Evaluating the lift function}
+\begin{lstlisting}
+;; ==================================================
+;; Lifting: One or more signals can be lifted with
+;;          a procedure to create a new signal
+;; Syntax: (lift (lambda (value1 value2 ...) ( ... )) 
+;;         $signal1 $signal2 ...)
+;; ==================================================
+(define (lift? exp) (tagged-list? exp 'lift))
+(define (lift-operator exp) (cadr exp))
+(define (lift-signals exp) (cddr exp))
+
+(define (eval-lift operator-exp signal-exps env)
+  ;; evaluate  the operator in the environment
+  (define operator (eval operator-exp env))
+  
+  ;; evaluate the parent signals
+  (define wrapped-parents (map (lambda (signal-exp) (eval signal-exp env)) signal-exps))
+  
+  ;; unwrap the parents (signals are wrapped in tagged lists to differentiate them)
+  (define parents (map signal-wrapper-unwrap wrapped-parents)) 
+  
+  ;; wrap the operation so that its execution happens in the scope of the environment
+  (define value-provider (lambda parent-values (apply-in-scope operator parent-values)))
+  
+  ;; return the wrapped newly created signal
+  (make-signal-wrapper (make-signal parents value-provider)))
 \end{lstlisting}
 
+Lifting signals creates a new signal, a scoped operator to produce values based on the parents and returns a wrapped signal to the environment. 
 
+\newpage
+\subsubsection{The update loop}
+\begin{lstlisting}
 
+;; =================================================
+;; The update loop: Continuously updates the signals
+;; =================================================
 
+;; signal-update: Procedure that updates the value of a signal
+;;                provided all parents have values
+(define (signal-update! $signal)
+  (define parents (signal-parents $signal))
+  (define children (signal-children $signal))
+  (define parents-have-values (map signal-has-value? parents))
+  (define all-parents-have-values? (foldl and-2 #t parents-have-values))
+  (if all-parents-have-values?
+    (let ((value-provider (signal-value-provider $signal))
+          (parent-values (map signal-value parents)))
+         (signal-value! $signal (apply value-provider parent-values))
+         (signal-up-to-date! $signal #t)
+         (for-each (lambda ($child) (signal-up-to-date! $child #f))
+                   children))
+  #f))
+  
+;; source-signals: signals without a parent
+(define source-signals (list $current-seconds $random-integer))
+  
+;; get-topologically-sorted-signals: sorts the signals in topological order
+;;                                   signals with fewest dependencies first
+(define (get-topologically-sorted-signals)
+  (define (topological-sort accumulator next-children)
+    (if (null? next-children)
+        accumulator
+        (topological-sort (append accumulator next-children) 
+                          (foldl append '() (map signal-children next-children)))))
+  (topological-sort '() source-signals))
+  
+;; update-signals-loop: loops infinitely and updates signals if necessary
+(define (update-signals-loop)
+  (define signals (get-topologically-sorted-signals))
+  (for-each signal-update! (filter (compose not signal-up-to-date?) 
+                                   signals))
+  (sleep 0.05)
+  (update-signals-loop))
+\end{lstlisting}
+
+The signal update loop repeats every 5ms and checks if any signals need to be updated. 
+For those that do, it evaluates the lift operator with the values of the parents, provided all of them have values. It then flags the signal as being up to date, but flags the children as stale. These will be picked up in the next iteration of the loop. Note that if the update loop takes too long, it is possible that incoming values of the source-signals are never processed. This problem can be tackled by switching to a callback based update loop, where updates to a signal immediately trigger the updating of all children. Unfortunately this approach also suffers a few drawbacks: the application would freeze if signals provide values too quickly.
+
+\section{Conclusion}
+
+In this chapter the reactive language was presented with samples and snippets of its implementation.
+It is built as a metacircular evaluator, evaluating Racket expressions in a simulated runtime that forwards statements to the real underlying Racket implementation. 
+
+This language can be used to model reactive data flows and provides a built in update loop to manage the data dependencies between signals. It does this by looping over a node graph that tracks the dependencies between signals. New signals can be created by deriving from other signals and a lift function which transforms the values of the parent signals into a single value.

@@ -1,6 +1,12 @@
 
 \chapter{Background}
 
+\section{Introduction}
+
+This research builds on two existing paradigms in software development: Reactive Programming and Dataflow Programming. While intimate knowledge about these concepts is not required, a basic understanding of both will be necessary to follow the ideas and implementation of this dissertation. Reactive Programming is situated in the category of higher level software development, serving as an abstraction tool for events and reactions to those events. Dataflow programming on the other hand can be considered more 'low level', providing a optimized engine for fast function execution.  
+
+\newpage
+
 \section{Reactive Programming}
 
 Reactive Programming is a software development paradigm focused on reactions, i.e. the handling of external events, user interactions, etc.  In this paradigm, the application state is derived from the previous state and any events that may occur, for example user interactions or current environmental factors. This deviates from more traditional approaches, where values and state can be written at any point and for any reason. In a reactive program however, the flow of dependencies between values must be recorded once, which can be seen as a (possibly cyclic!) directed graph. When a new value is recorded, it is appended to the end of the graph, where the new node "subscribes" to values from the source nodes.
@@ -34,6 +40,7 @@ As it turns out, signals can be used to model almost any concept in software dev
 
 Even though the underlying mechanism will still be identical to more traditional approaches (attaching event listeners to DOM events in HTML, opening and connecting to a WebSocket connection, etc.), the fact that all these concepts can be brought together under a single umbrella called "signals" allows for the modeling of higher order operators to map, combine and filter these flows of values in ways that were previously a lot harder.
 
+\newpage
 \section{Dataflow Programming}
 
 \subsection{Introduction}
@@ -67,6 +74,10 @@ Do note that, unlike in Reactive Programming, the execution of a function consum
 
 One of the key advantages of Dataflow Programming is its isolation of function executions, completely removing the need for shared state. Since Dataflow functions are only allowed to access data from its provided parameters, it cannot rely on external state outside the scope of the dataflow engine. This allows the execution of these functions to be distributed across different processors and even separate machines, ensuring optimal parallelization. 
 
+\section{Conclusion}
+
+Two paradigms for software development were presented: Reactive Programming and Dataflow programming. 
+Reactive Programming is targeted more towards events and reactions and shines best in environments where these things are plenty, for example in user interfaces and other places where events can come from any direction. Dataflow Programming on its part focuses more on the optimal, parallel execution of functions by streaming parameters to them in isolated scopes. We do however note similarities between the two, namely that they both work with an update graph that guides the data along the nodes. 
 
 
 
