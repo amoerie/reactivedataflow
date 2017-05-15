@@ -1,5 +1,76 @@
-
 \chapter{Language}
+\lstset{language=lisp,showtabs=false}
+
+\section{Introduction}
+
+For the purposes of this research, a lightweight reactive language was implemented to facilitate the process of porting it to a dataflow engine afterwards. Having control of the inner peculiarities of the timings and delivery mechanism of data would prove to be crucial in adapting to the dataflow world. The main goal was to provide a simple reactive interpreter that would keep the signals up to date in the proper manner. Later on, this mechanism would then be built using a dataflow engine.
+The interpreter does not compile down to assembly, but evaluates immediately in the underlying Racket language. 
+\newpage
+
+\section{Reactive Metacircular Evaluator}
+
+The initial version of the language was written in Racket, making use of the Racket evaluator to execute primitive procedures (e.g. addition, multiplication, etc.) and simulating a program memory by storing variables and scopes in simple Racket lists. This evaluator builds on earlier work by professor Theo D'Hondt, who provided a basic metacircular evaluator during the course 'Interpretation of Computer Programs'. 
+
+Primitive values
+\begin{lstlisting}
+1     ;; a number
+"ABC" ;; a string
+'()   ;; the empty list
+\end{lstlisting}
+
+Primitive procedures
+\begin{lstlisting}
+(cons x xs) ;; prepends x to a list of xs
+(car xs)    ;; gets the head of a list
+(cdr xs)    ;; gets the tail of a list
+(null? xs)  ;; checks if a list is empty
+\end{lstlisting}
+
+Variables and procedures
+\begin{lstlisting}
+(define x 3)             ;; defines a new variable x with value 3
+x                        ;; gets the value of x
+(define (x a b) (+ a b)) ;; defines a new procedure x
+(x 1 2)                  ;; calls a procedure x with arguments 1 and 2
+(lambda (a b) (+ a b))   ;; defines an anonymous procedure
+\end{lstlisting}
+
+For the reactive language, two new concepts were introduced to the metacircular evaluator:
+
+\begin{enumerate}
+	\item Signals: wrappers around values which track their parents and children in the dependency graph. 
+	\item Lift: a procedure that allows the creation of a new signal deriving from on one or more existing signals and a lambda that produces a single value given the values of the parent signals.
+\end{enumerate}
+
+Signals and lift
+\begin{lstlisting}
+(value signal)           ;; gets the current value of a variable called signal
+(lift + signal1 signal2) ;; creates a new signal that emits the sum of signal1 and signal2
+\end{lstlisting}
+
+\newpage
+\subsection{Implementation}
+
+When signals are created, they are registered with the parents as children. This implicitly creates a graph that tracks the dependencies between signals. A background loop constantly enumerates the signals, detecting stale children and computing new values for them by executing their lift function. This function is evaluated in the lexical scope of the Racket evaluator again, allowing for closures and other possible language constructs. 
+The reactive language provides a few sample source signals, which update automatically and have no parents. The signal 'current-seconds' is such an example, it emits every second a new value indicating the number of seconds since midnight UTC, January 1, 1970. Another signal called 'random-integer' produces random numbers between 1 and 100 in randomized time intervals. 
+All new signals have to be derived from at least one source signal, and must output a value when one of the parents emits a new value.
+
+\subsection{Sample programs}
+
+\begin{lstlisting}
+	;; signal that emits the current date
+	(define current-date (lift seconds->date current-seconds)) 
+	
+	;; prints the current value
+	(value current-date)       
+	
+	;; signal that adds current seconds to random integer                                
+	(define sec-rand (lift + current-seconds random-integer))  
+	
+	;; signal that emits whether the aforementioned signal is even
+	(define sec-rand-even? (lift even? sec-rand))			   
+\end{lstlisting}
+
 
 
 
