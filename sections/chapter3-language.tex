@@ -3,9 +3,7 @@
 
 \section{Introduction}
 
-For the purposes of this research, a lightweight reactive language was implemented to facilitate the process of porting it to a dataflow engine afterwards. Having control of the inner peculiarities of the timings and delivery mechanism of data would prove to be crucial in adapting to the dataflow world. The main goal was to provide a simple reactive interpreter that would keep the signals up to date in the proper manner. Later on, this mechanism would then be built using a dataflow engine.
-The interpreter does not compile down to assembly, but evaluates immediately in the underlying Racket language. 
-\newpage
+For the purposes of this thesis, we have implemented two AST interpreters in Racket, supporting most of the basic constructs found in Racket. The first interpreter is designed to support reactive patterns on top of the already existing Racket. The second interpreter supports the exact same language, but executes its instructions using an underlying dataflow engine. We chose to implement a custom language (rather than a framework or library) to maintain maximum control over the inner workings and to facilitate experimentation. Having control of the inner peculiarities of the timings and delivery mechanism of data would prove to be crucial in adapting to the dataflow world. The main goal was to provide a simple reactive interpreter that would keep the signals up to date in the proper manner. Later on, this mechanism would then be built using a dataflow engine. Both interpreters do not compile down to assembly, but evaluates immediately in the underlying Racket language. 
 
 \section{Reactive Metacircular Evaluator}
 
