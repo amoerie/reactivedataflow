@@ -3,25 +3,27 @@
 
 \section{Introduction}
 
-For the purposes of this thesis, we have implemented a lightweight language \textit{FrDataFlow} using two different AST interpreters in Racket, supporting most of the basic constructs found in Racket. This work is based on earlier work detailed in \citet{abelson_structure_1999}. The first interpreter supports reactive patterns on top of the already existing Racket language. The second interpreter also supports the exact same language, but executes its instructions using an underlying dataflow engine. We chose to implement this custom language \textit{FrDataFlow} (rather than a framework or library) to maintain maximum control over the inner workings and to facilitate experimentation atop the dataflow engine. The main goal was to have a reactive superset of Racket for experimental purposes during this thesis.
+For the purposes of this thesis, we have implemented a lightweight language called \textit{FrDataFlow} using two different AST interpreters in Racket, supporting most of the basic constructs found in Racket. This language is based on earlier work detailed in \citet{abelson_structure_1999}. The first interpreter supports reactive patterns on top of the already existing Racket language. The second interpreter also supports the exact same language, but executes its instructions using an underlying dataflow engine. We chose to implement this custom language \textit{FrDataFlow} (rather than a framework or library) to maintain maximum control over the inner workings and to facilitate experimentation atop the dataflow engine. The main goal was to have a reactive superset of Racket for experimental purposes during this thesis.
 
 \newpage
 \section{FrDataFlow}
 
+
 \subsection{Sample program}
 
-Take for example a roadside digital billboard that displays the current date and temperature. FrDataFlow provides an environment with most Racket language constructs (defining variables, procedures, lambda, primitive operators, ...) and some built in signals, described in listing \ref{lst:language-builtin-signals}
+FrDataFlow provides an environment with most Racket language constructs (defining variables, procedures, lambda, primitive operators, ...), the \textit{lift} operator (which creates a new signal based on other signals) and some built in signals, shown in listing \ref{lst:language-frdataflow-builtinsignals}
 
-\begin{lstlisting}[caption={Built in signals},captionpos=b,label={lst:language-builtin-signals}]
+\begin{lstlisting}[caption={Built in signals},captionpos=b,label={lst:language-frdataflow-builtinsignals}]
 ;; A signal which emits the current seconds since 1 Jan 1970, every second
 current-unix-timestamp	
-;; A signal which emits the current temperature every 1 to 10 seconds
+;; A signal which emits the current temperature from time to time
 current-temp-fahrenheit 
 \end{lstlisting}
 
-From the \textit{current-unix-timestamp} signal, we can derive the date using the built in procedures \textit{seconds->date} and \textit{date->string}. The temperature is unfortunately in fahrenheit, so we will convert it to Celsius first, 
+Take for example a roadside digital billboard which displays the current date and temperature. To show this information, we can derive a signal that contains the exact information that needs to be shown, using the built in signals in FrDataFlow. 
+From the \textit{current-unix-timestamp} signal, we can compute the date using the built in procedures \textit{seconds->date} and \textit{date->string}. The temperature is unfortunately in fahrenheit, so we will convert it to Celsius first. Lastly, we combine these signals into a single signal that contains the text we want to show. See listing \ref{lst:language-frdataflow-billboard} for the full definition of the billboard text written with FrDataFlow constructs. 
 
-\begin{lstlisting}
+\begin{lstlisting}[caption={Billboard},captionpos=b,label={lst:language-frdataflow-billboard}]
 (define (fahrenheit->celsius fahrenheit)
   (quotient (* (- fahrenheit 32) 5) 9))
 (define current-temp-celsius
@@ -36,183 +38,70 @@ From the \textit{current-unix-timestamp} signal, we can derive the date using th
      current-date))   
 \end{lstlisting}
 
-The initial version of the language was written in Racket, making use of the Racket evaluator to execute primitive procedures (e.g. addition, multiplication, etc.) and simulating a program memory by storing variables and scopes in simple Racket lists. This evaluator builds on earlier work by professor Theo D'Hondt, who provided a basic metacircular evaluator during the course 'Interpretation of Computer Programs'. 
+This ultimately produces a signal \textit{billboard-label} which will update every time either \textit{current-unix-timestamp} or \textit{current-temp-fahrenheit} produce new values. When this happens, the runtime will recalculate the values of \textit{current-date} and \textit{current-temp-celsius}, which in turn will trigger the update of \textit{billboard-label}. Also note that \textit{billboard-label} will not produce a value until both the current date and the current temperature are known. 
 
-Primitive values
-\begin{lstlisting}
-1     ;; a number
-"ABC" ;; a string
-'()   ;; the empty list
-\end{lstlisting}
+\subsection{Evaluation}
 
-Primitive procedures
-\begin{lstlisting}
-(cons x xs) ;; prepends x to a list of xs
-(car xs)    ;; gets the head of a list
-(cdr xs)    ;; gets the tail of a list
-(null? xs)  ;; checks if a list is empty
-\end{lstlisting}
+\subsubsection{Preprocessing}
 
-Variables and procedures
-\begin{lstlisting}
-(define x 3)             ;; defines a new variable x with value 3
-x                        ;; gets the value of x
-(define (x a b) (+ a b)) ;; defines a new procedure x
-(x 1 2)                  ;; calls a procedure x with arguments 1 and 2
-(lambda (a b) (+ a b))   ;; defines an anonymous procedure
-\end{lstlisting}
+When this program is evaluated, FrDataFlow will dynamically build the signal graph by registering dependent signals as children on each signal. This means that, when a \textit{lift} function is invoked, it will register the newly created signal as a child in every signal that is referenced. Figure \ref{fig:language-frdataflow-example} is a visualization of this graph for the example given in listing \ref{lst:language-frdataflow-billboard}.
 
-\newpage
-For the reactive language, two new concepts were introduced to the metacircular evaluator:
+\begin{figure}[h]
+	\centerline{\includegraphics[width=\textwidth]{images/language-frdataflow-example.png}}
+	\caption{The billboard as a signal graph}
+	\label{fig:language-frdataflow-example}
+\end{figure}
 
-\begin{enumerate}
-	\item Signals: wrappers around values which track their parents and children in the dependency graph. 
-	\item Lift: a procedure that allows the creation of a new signal deriving from on one or more existing signals and a lambda that produces a single value given the values of the parent signals.
-\end{enumerate}
+Secondly, FrDataFlow will topologically sort this graph into a list, in which the signals are sorted by having the least dependencies. The position of a signal in this list indicates that it can be a child to signals that come before it, and that its children must come after it in the list. This allows FrDataFlow to simply loop over this topologically sorted list from start to finish, ensuring that signals are updated in the correct order. 
 
-Signals and lift
-\begin{lstlisting}
-(value signal)           ;; gets the current value of a variable called signal
-(lift + signal1 signal2) ;; creates a new signal that emits the sum of signal1 and signal2
-\end{lstlisting}
+\begin{figure}[h]
+	\centerline{\includegraphics[width=\textwidth]{images/language-frdataflow-topologically-sorted-list.png}}
+	\caption{The billboard as a topologically sorted list}
+	\label{fig:language-frdataflow-topologically-sorted-list}
+\end{figure}
 
-\subsection{Sample programs}
-
-\begin{lstlisting}
-;; signal that emits the current date
-(define current-date (lift seconds->date current-seconds)) 
-
-;; prints the current value
-(value current-date)       
-
-;; signal that adds current seconds to random integer                                
-(define sec-rand (lift + current-seconds random-integer))  
-
-;; signal that emits whether the aforementioned signal is even
-(define sec-rand-even? (lift even? sec-rand))			   
-\end{lstlisting}
-
-These are some sample usages of the lift function and existing source signals. There is no limit to the amount of parents a signal can have or to the depth of the dependency chain. Note that the 'value' function is necessary to extract the current value of a signal, without this the signal wrapper would be returned by the evaluator. 
-
-\newpage
-\subsection{Implementation}
-
-When signals are created, they are registered with the parents as children. This implicitly creates a graph that tracks the dependencies between signals. A background loop constantly enumerates the signals, detecting stale children and computing new values for them by executing their lift function. This function is evaluated in the lexical scope of the Racket evaluator again, allowing for closures and other possible language constructs. 
-The reactive language provides a few sample source signals, which update automatically and have no parents. The signal 'current-seconds' is such an example, it emits every second a new value indicating the number of seconds since midnight UTC, January 1, 1970. Another signal called 'random-integer' produces random numbers between 1 and 100 in randomized time intervals. 
-All new signals have to be derived from at least one parent signal, and must output a value when one of the parents emits a new value.
-
-\subsubsection{Creating a new signal}
-\begin{lstlisting}
-;; ==============================================
-;; Signals: signals can derive from other signals 
-;;          taking their values as input and 
-;;          producing something of their own
-;; ==============================================
-;; Object structure: [
-;;   value          : any,         
-;;   has-value?     : boolean
-;;   up-to-date?    : boolean,
-;;   parents        : [signal],
-;;   value-provider : val1, val2, ... => value,
-;;   children       : [signal]
-;; ]
-(define (make-signal parents value-provider)
-  ;; make a vector representing the signal (see object structure above)
-  (define $signal 
-         (list->vector (list null #f #f parents value-provider '())))
-
-  ;; enumerate the parents and register the new child
-  (for-each (lambda ($parent) (signal-add-child! $parent $signal)) parents)
-
-  ;; return the newly created signal
-  $signal)
-\end{lstlisting}
-Signals are stored in memory as simple vectors, keeping a reference to both parents and children to facilitate the implementation of the update loop. 
-
-\newpage
-\subsubsection{Evaluating the lift function}
-\begin{lstlisting}
-;; ==================================================
-;; Lifting: One or more signals can be lifted with
-;;          a procedure to create a new signal
-;; Syntax: (lift (lambda (value1 value2 ...) ( ... )) 
-;;         $signal1 $signal2 ...)
-;; ==================================================
-(define (lift? exp) (tagged-list? exp 'lift))
-(define (lift-operator exp) (cadr exp))
-(define (lift-signals exp) (cddr exp))
-
-(define (eval-lift operator-exp signal-exps env)
-  ;; evaluate  the operator in the environment
-  (define operator (eval operator-exp env))
-  
-  ;; evaluate the parent signals
-  (define wrapped-parents (map (lambda (signal-exp) (eval signal-exp env)) signal-exps))
-  
-  ;; unwrap the parents (signals are wrapped in tagged lists to differentiate them)
-  (define parents (map signal-wrapper-unwrap wrapped-parents)) 
-  
-  ;; wrap the operation so that its execution happens in the scope of the environment
-  (define value-provider (lambda parent-values (apply-in-scope operator parent-values)))
-  
-  ;; return the wrapped newly created signal
-  (make-signal-wrapper (make-signal parents value-provider)))
-\end{lstlisting}
-
-Lifting signals creates a new signal, a scoped operator to produce values based on the parents and returns a wrapped signal to the environment. 
-
-\newpage
 \subsubsection{The update loop}
-\begin{lstlisting}
 
-;; =================================================
-;; The update loop: Continuously updates the signals
-;; =================================================
+To implement the update behavior, each signal has a boolean flag indicating if it is stale or not. 
+Upon startup of the runtime, FrDataFlow initializes a never ending update loop which loops over the topologically sorted list (as shown in figure \ref{fig:language-frdataflow-topologically-sorted-list}), skipping any signals which are not stale. 
+If it encounters a stale signal, the lambda function that was provided during the creation of the signal will be called with the latest values of the parent signals. The signal is flagged as no longer being stale, and its direct children are flagged as stale immediately. Take for example an update of the current temperature. We start with a situation where the current date and temperature are already known and shown on the billboard, so the state of the signal graph looks like what is shown in figure \ref{fig:language-frdataflow-1}. 
+Note that built in signals in FrDataFlow do not have a staleness flag, because they are kept up to date in separate runtime loops. 
 
-;; signal-update: Procedure that updates the value of a signal
-;;                provided all parents have values
-(define (signal-update! $signal)
-  (define parents (signal-parents $signal))
-  (define children (signal-children $signal))
-  (define parents-have-values (map signal-has-value? parents))
-  (define all-parents-have-values? (foldl and-2 #t parents-have-values))
-  (if all-parents-have-values?
-    (let ((value-provider (signal-value-provider $signal))
-          (parent-values (map signal-value parents)))
-         (signal-value! $signal (apply value-provider parent-values))
-         (signal-up-to-date! $signal #t)
-         (for-each (lambda ($child) (signal-up-to-date! $child #f))
-                   children))
-  #f))
-  
-;; source-signals: signals without a parent
-(define source-signals (list $current-seconds $random-integer))
-  
-;; get-topologically-sorted-signals: sorts the signals in topological order
-;;                                   signals with fewest dependencies first
-(define (get-topologically-sorted-signals)
-  (define (topological-sort accumulator next-children)
-    (if (null? next-children)
-        accumulator
-        (topological-sort (append accumulator next-children) 
-                          (foldl append '() (map signal-children next-children)))))
-  (topological-sort '() source-signals))
-  
-;; update-signals-loop: loops infinitely and updates signals if necessary
-(define (update-signals-loop)
-  (define signals (get-topologically-sorted-signals))
-  (for-each signal-update! (filter (compose not signal-up-to-date?) 
-                                   signals))
-  (sleep 0.05)
-  (update-signals-loop))
-\end{lstlisting}
+\begin{figure}[h]
+	\centerline{\includegraphics[width=\textwidth]{images/language-frdataflow-1.png}}
+	\caption{The initial state of the billboard}
+	\label{fig:language-frdataflow-1}
+\end{figure}
 
-The signal update loop repeats every 5ms and checks if any signals need to be updated. 
-For those that do, it evaluates the lift operator with the values of the parents, provided all of them have values. It then flags the signal as being up to date, but flags the children as stale. These will be picked up in the next iteration of the loop. Note that if the update loop takes too long, it is possible that incoming values of the source-signals are never processed. This problem can be tackled by switching to a callback based update loop, where updates to a signal immediately trigger the updating of all children. Unfortunately this approach also suffers a few drawbacks: the application would freeze if signals provide values too quickly.
+When the new temperature is observed, the direct children of \textit{current-temp-fahrenheit} are flagged as stale, as shown in figure \ref{fig:language-frdataflow-2}.
+
+\begin{figure}[h]
+	\centerline{\includegraphics[width=\textwidth]{images/language-frdataflow-2.png}}
+	\caption{A new temperature is emitted by current-temp-fahrenheit}
+	\label{fig:language-frdataflow-2}
+\end{figure}
+
+The update loop sees that the signal has gone stale, recalculates what its value should be using the value of \textit{current-temp-fahrenheit} and removes the stale flag when its work is done.
+However, it also immediately flags \textit{billboard-label} as stale, because it is registered as a child of \textit{current-temp-celsius}, as shown in figure \ref{fig:language-frdataflow-3}.
+
+\begin{figure}[h]
+	\centerline{\includegraphics[width=\textwidth]{images/language-frdataflow-3.png}}
+	\caption{current-temp-celsius gets recalculated}
+	\label{fig:language-frdataflow-3}
+\end{figure}
+
+When the update loop moves further down the topologically sorted list, it sees that \textit{billboard-label} is also stale now. It grabs the latest values from \textit{current-temp-celsius} and \textit{current-date} and calls the lambda again that was used to create \textit{billboard-label}, removing the stale flag when it is done. The final result is shown in figure \ref{fig:language-frdataflow-4}. 
+At this point, the update loop starts over again, waiting until another built in signal produces a new value. 
+
+\begin{figure}[h]
+	\centerline{\includegraphics[width=\textwidth]{images/language-frdataflow-4.png}}
+	\caption{billboard-label gets recalculated}
+	\label{fig:language-frdataflow-4}
+\end{figure}
 
 \section{Conclusion}
 
-In this chapter the reactive language was presented with samples and snippets of its implementation.
-It is built as a metacircular evaluator, evaluating Racket expressions in a simulated runtime that forwards statements to the real underlying Racket implementation. 
+In this chapter the reactive language FrDataFlow was presented with samples and diagrams of its implementation.
+It is built as a metacircular evaluator that takes a core subset of the Racket language and extends it with some reactive concepts. FrDataFlow evaluates these expressions in a simulated runtime that forwards statements to the real underlying Racket implementation. 
 
-This language can be used to model reactive data flows and provides a built in update loop to manage the data dependencies between signals. It does this by looping over a node graph that tracks the dependencies between signals. New signals can be created by deriving from other signals and a lift function which transforms the values of the parent signals into a single value.
+This language can be used to model reactive data flows and provides a built in update loop to manage the data dependencies between signals. It does this by intelligently looping over the signals while being aware of the dependencies between them. New signals can be created by deriving from other signals and a lift function which produces a single value based on the values of the parent signals.
