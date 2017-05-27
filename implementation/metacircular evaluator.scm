@@ -1,5 +1,5 @@
 #lang racket
-
+(require racket/date)
 (include "runtime.rkt")
 
 ; Instruction types
@@ -399,8 +399,8 @@
                              the-empty-environment)))
     (define-variable! 'true true initial-env)
     (define-variable! 'false false initial-env)
-    (define-variable! '$current-seconds (make-signal-wrapper $current-seconds) initial-env)
-    (define-variable! '$random-integer (make-signal-wrapper $random-integer) initial-env)
+    (define-variable! 'current-unix-timestamp (make-signal-wrapper current-unix-timestamp) initial-env)
+    (define-variable! 'current-temp-fahrenheit (make-signal-wrapper current-temp-fahrenheit) initial-env)
     initial-env))
 
 ;;
@@ -420,8 +420,12 @@
         (list '* *)
         (list '- -)
         (list '/ /)
+        (list 'quotient quotient)
         (list 'even? even?)
         (list 'seconds->date seconds->date)
+        (list 'date->string date->string)
+        (list 'string-append string-append)
+        (list 'number->string number->string)
         (list 'value (lambda (exp) (signal-value (signal-wrapper-unwrap exp))))
         ;;      more primitives
         ))
@@ -463,8 +467,8 @@
 ;; ==============================================
 ;; Signal-wrappers: used to flag signals in the environment
 ;; ==============================================
-(define (make-signal-wrapper $signal)
-  (cons 'signal $signal))
+(define (make-signal-wrapper signal)
+  (cons 'signal signal))
 
 (define (signal-wrapper? exp)
   (tagged-list? exp 'signal))
@@ -491,78 +495,78 @@
 ;; The value-provider parameter is a function that takes the value from each parent signal and returns the new value for this derived signal
 ;;
 (define (make-signal parents value-provider)
-  (define $signal (list->vector (list null #f parents value-provider '())))
-  (for-each (lambda ($parent) (signal-add-child! $parent $signal)) parents)
-  $signal)
+  (define signal (list->vector (list null #f parents value-provider '())))
+  (for-each (lambda (parent) (signal-add-child! parent signal)) parents)
+  signal)
 
-(define (signal-value $signal)
-  (if (signal-has-value? $signal)
-      (vector-ref $signal 0)
+(define (signal-value signal)
+  (if (signal-has-value? signal)
+      (vector-ref signal 0)
       (raise "Cannot access the value of this signal, it does not have one (yet)")))
 
-(define (signal-value! $signal value)
-  (vector-set! $signal 0 value)
-  (signal-has-value! $signal #t))
+(define (signal-value! signal value)
+  (vector-set! signal 0 value)
+  (signal-has-value! signal #t))
 
-(define (signal-has-value? $signal)
-  (vector-ref $signal 1))
+(define (signal-has-value? signal)
+  (vector-ref signal 1))
 
-(define (signal-has-value! $signal has-value)
-  (vector-set! $signal 1 has-value))
+(define (signal-has-value! signal has-value)
+  (vector-set! signal 1 has-value))
 
-(define (signal-parents $signal)
-  (vector-ref $signal 2))
+(define (signal-parents signal)
+  (vector-ref signal 2))
 
-(define (signal-value-provider $signal)
-  (vector-ref $signal 3))
+(define (signal-value-provider signal)
+  (vector-ref signal 3))
 
-(define (signal-children $signal)
-  (vector-ref $signal 4))
+(define (signal-children signal)
+  (vector-ref signal 4))
 
-(define (signal-children! $signal children)
-  (vector-set! $signal 4 children))
+(define (signal-children! signal children)
+  (vector-set! signal 4 children))
 
-(define (signal-add-child! $signal $child)
-  (signal-children! $signal (cons $child (signal-children $signal))))   
+(define (signal-add-child! signal child)
+  (signal-children! signal (cons child (signal-children signal))))   
 
 ;; ==============================================
 ;; Built in signals
 ;; ==============================================
 
 ;;
-;; $current-seconds
+;; current-unix-timestamp
 ;; : emits the current seconds since 1st January 1970, every second
 ;;
-(define $current-seconds (make-signal '() identity-function))
-(define (current-seconds-loop callback)
-  (define index (get-signal-operation-index $current-seconds))
+(define current-unix-timestamp (make-signal '() identity-function))
+(define (current-unix-timestamp-loop callback)
+  (define index (get-signal-operation-index current-unix-timestamp))
   (let loop ()
     (sleep 0.5)
     (define new-value (current-seconds))
-    (when (or (not (signal-has-value? $current-seconds))
-              (not (eq? new-value (signal-value $current-seconds))))
-      (signal-value! $current-seconds new-value)
+    (when (or (not (signal-has-value? current-unix-timestamp))
+              (not (eq? new-value (signal-value current-unix-timestamp))))
+      (signal-value! current-unix-timestamp new-value)
       (callback))
     (loop)))
 
 ;;
-;; $random
+;; current-temp-fahrenheit
 ;; : emits a random number between 1 and 100, every (random 1 .. 10 seconds)
 ;;
-(define $random-integer (make-signal '() identity-function))
-(define (random-integer-loop callback)
-  (define index (get-signal-operation-index $random-integer))
+(define current-temp-fahrenheit (make-signal '() identity-function))
+(define (current-temp-fahrenheit-loop callback)
+  (define index (get-signal-operation-index current-temp-fahrenheit))
   (let loop ()
     (sleep (random 1 10))
     (define new-value (random 1 100))
-    (signal-value! $random-integer new-value)
+    (signal-value! current-temp-fahrenheit new-value)
     (callback)
     (loop)))
 
 ;; ==============================================
 ;; Signal graph + update loop
 ;; ==============================================
-(define source-signals (list $current-seconds $random-integer))
+(define source-signals (list current-unix-timestamp current-temp-fahrenheit))
 
 (define (get-topologically-sorted-signals)
   (define (topological-sort accumulator next-children)
@@ -575,7 +579,7 @@
 ;; ==============================================
 ;; Lifting
 ;; One or more signals can be lifted with a procedure to create a new signal
-;; Syntax: (lift (lambda (value1 value2 ...) ( ... )) $signal1 $signal2 ...)
+;; Syntax: (lift (lambda (value1 value2 ...) ( ... )) signal1 signal2 ...)
 ;; ==============================================
 (define (lift? exp) (tagged-list? exp 'lift))
 (define (lift-operator exp) (cadr exp))
@@ -626,10 +630,19 @@
    ;;'x
    ;;'(define (test a b c) (+ a b c))
    ;;'(test 1 2 3)
-   ;;'(define current-seconds-even (lift even? $current-seconds))
-   '(define current-date (lift seconds->date $current-seconds))
-   '(define test (lift cons $random-integer current-date))
-   ;;'current-seconds-even
+   '(define (fahrenheit->celsius fahrenheit)
+     (quotient (* (- fahrenheit 32) 5) 9))
+   '(define current-temp-celsius
+      (lift fahrenheit->celsius current-temp-fahrenheit))
+   '(define current-date
+      (lift seconds->date current-unix-timestamp))
+   '(define billboard-label
+       (lift
+        (lambda (temperature date)
+          (string-append "Temperature: " (number->string temperature) "C°, Date: " (date->string date)))
+        current-temp-celsius
+        current-date))   
+   
   )
 )
 (for-each evaluate program-inputs)
@@ -644,12 +657,12 @@
 (define topologically-sorted-signals (get-topologically-sorted-signals))
 
 ;; Returns a unique index per signal that identifies the associated dataflow operation
-(define (get-signal-operation-index $signal)
-  (index-of topologically-sorted-signals $signal))
+(define (get-signal-operation-index signal)
+  (index-of topologically-sorted-signals signal))
 
-;; Returns the argument index that the provided $signal should use to send its new value to the provided $child (this will be used for the port of the $signal operation)
-(define (get-signal-operation-argument-index $signal $child)
-  (index-of (signal-parents $child) $signal))
+;; Returns the argument index that the provided signal should use to send its new value to the provided child (this will be used for the port of the signal operation)
+(define (get-signal-operation-argument-index signal child)
+  (index-of (signal-parents child) signal))
 
 ;; (operation number-of-inputs lambda ports)
 ;;
@@ -672,26 +685,26 @@
 
 ;; For each signal:
 ;; operation with index i : lambda that takes p arguments where p = # parents
-(define (make-signal-operation $signal)
-  (define parents (signal-parents $signal))
-  (define children (signal-children $signal))
-  (define value-provider (signal-value-provider $signal))
-  (define (make-signal-operation-output-link $child)
-    (link (get-signal-operation-index $child)
-                (get-signal-operation-argument-index $signal $child)))
+(define (make-signal-operation signal)
+  (define parents (signal-parents signal))
+  (define children (signal-children signal))
+  (define value-provider (signal-value-provider signal))
+  (define (make-signal-operation-output-link child)
+    (link (get-signal-operation-index child)
+                (get-signal-operation-argument-index signal child)))
 
   ;; the number of arguments of the dataflow operation is equal to the number of parent signals.
   ;; Source signals technically have no parents, so their value provider is just the identity function (lambda (x) x)
   ;; This does mean that while they don't have any parents, their operation-number-of-args has to be 1
   (define operation-number-of-args
-    (cond ((eq? (member $signal source-signals) #f) (length parents))
+    (cond ((eq? (member signal source-signals) #f) (length parents))
           (else 1)))
 
   ;; executing a signal means computing the new value using the value-provider, updating the state of the signal and passing the new value to the children
   (define operation-lambda (lambda parent-values
                 (let ((value (apply value-provider parent-values)))
                   (newline) (display "New value: ") (display value)
-                  (signal-value! $signal value)
+                  (signal-value! signal value)
                   (list value))))
 
   ;; for each child (dependent signal) we create a link which identifies the operation index and argument index
@@ -711,13 +724,13 @@
 ;; Creates 1 new dataflow context + input tokens for each source signal of their current values and pushes those into the token queue
 (define (push-source-signals-current-values dataflow-runtime)
   (define dataflow-context (context-manager-get! (runtime-context-manager dataflow-runtime)))
-  (for-each (lambda ($source-signal) (push-source-signals-current-value $source-signal dataflow-runtime dataflow-context)) source-signals))
+  (for-each (lambda (source-signal) (push-source-signals-current-value source-signal dataflow-runtime dataflow-context)) source-signals))
 
-;; Creates a new input token for the given $source-signal (only if the source signal has a value)
-(define (push-source-signals-current-value $source-signal dataflow-runtime dataflow-context)
-  (when (signal-has-value? $source-signal)
-    (let ((index (get-signal-operation-index $source-signal))
-          (value (signal-value $source-signal)))
+;; Creates a new input token for the given source-signal (only if the source signal has a value)
+(define (push-source-signals-current-value source-signal dataflow-runtime dataflow-context)
+  (when (signal-has-value? source-signal)
+    (let ((index (get-signal-operation-index source-signal))
+          (value (signal-value source-signal)))
       (runtime-add-inputs! dataflow-runtime dataflow-context index (list value)))))
 
 ;; Infinitely tries to process tokens in the dataflow runtime
@@ -741,10 +754,10 @@
 
   (define source-signal-callback (lambda () (push-source-signals-current-values dataflow-runtime)))
   
-  (newline) (display "Starting up current-seconds-loop")
-  (thread (lambda () (current-seconds-loop source-signal-callback)))
-  (newline) (display "Starting up random-integer-loop")
-  (thread (lambda () (random-integer-loop source-signal-callback)))
+  (newline) (display "Starting up current-unix-timestamp-loop")
+  (thread (lambda () (current-unix-timestamp-loop source-signal-callback)))
+  (newline) (display "Starting up current-temp-fahrenheit-loop")
+  (thread (lambda () (current-temp-fahrenheit-loop source-signal-callback)))
   (newline) (display "Starting up dataflow-runtime-processor-loop")
   (thread (lambda () (dataflow-runtime-processor-loop dataflow-runtime))))
 
