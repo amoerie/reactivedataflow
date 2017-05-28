@@ -22,9 +22,9 @@ A number of implementations exist for reactive programming, in this thesis we wi
 \subsection{Example}
 
 The canonical metaphor for Reactive Programming is spreadsheets, which typically track changes across input cells and automatically recompute values in other cells if the formulas they contain reference the aforementioned input cells. In essence, cells react to modifications made in other cells if their formulas depend on them. These cells are what we call \textit{observables} or \textit{signals} in Reactive Programming.
-Imagine a simple program in an imperative programming setting:
+Imagine a simple program in an imperative programming setting, as shown in listing \ref{lst:background-reactive-example}.
 
-\begin{lstlisting}
+\begin{lstlisting}[caption={A basic reactive program},captionpos=b,label={lst:background-reactive-example}]
 	a = b + c
 \end{lstlisting}
 
@@ -69,9 +69,9 @@ A large difference with Reactive Programming is that Dataflow Programming puts t
 
 \subsection{Example}
 
-Imagine a simple program in an imperative programming setting:
+Imagine a simple program in an imperative programming setting, as shown in listing \ref{lst:background-reactive-example}.
 
-\begin{lstlisting}
+\begin{lstlisting}[caption={A basic data flow program},captionpos=b,label={lst:background-dataflow-example}]
 a = b + c
 d = a + b
 \end{lstlisting}

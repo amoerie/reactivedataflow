@@ -2,7 +2,26 @@
 
 \section{Introduction}
 
+In this chapter, a dataflow engine is presented based on the work detailed in \citet{jennifer_extensible_2017}.
+This engine is designed to support parallel execution of instructions by queuing all arguments to instructions and executing these in a scope agnostic way.
+Tagged token dataflow is an extension to the data flow model where tags are used to distinguish the execution context of tokens, i.e. multiple calls to the same instruction with different arguments.
+For the purposes of this thesis, a lightweight version of this engine has been implemented in Racket to facilitate the mapping process from FrDataFlow.
+
 \section{Architecture}
+
+\subsection{Execution of instructions}
+
+Take for example a sample program which computes the average of two numbers, as shown in listing \ref{lst:engine-architecture-sample}
+
+\begin{lstlisting}[caption={Computing the average of two numbers},captionpos=b,label={lst:engine-architecture-sample}]
+(define (average x y)
+  (/ (+ x y) 2))
+  
+(average 2 6)
+(average 1 5)
+\end{lstlisting}
+
+
 
 \section{Mapping of reactive signals to dataflow engine}
 
