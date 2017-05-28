@@ -47,7 +47,7 @@ This ultimately produces a signal \textit{billboard-label} which will update eve
 When this program is evaluated, FrDataFlow will dynamically build the signal graph by registering dependent signals as children on each signal. This means that, when a \textit{lift} function is invoked, it will register the newly created signal as a child in every signal that is referenced. Figure \ref{fig:language-frdataflow-example} is a visualization of this graph for the example given in listing \ref{lst:language-frdataflow-billboard}.
 
 \begin{figure}[h]
-	\centerline{\includegraphics[width=\textwidth]{images/language-frdataflow-example.png}}
+	\centerline{\includegraphics[width=\textwidth]{images/Language-FrDataflow-Example.png}}
 	\caption{The billboard as a signal graph}
 	\label{fig:language-frdataflow-example}
 \end{figure}
@@ -55,7 +55,7 @@ When this program is evaluated, FrDataFlow will dynamically build the signal gra
 Secondly, FrDataFlow will topologically sort this graph into a list, in which the signals are sorted by having the least dependencies. The position of a signal in this list indicates that it can be a child to signals that come before it, and that its children must come after it in the list. This allows FrDataFlow to simply loop over this topologically sorted list from start to finish, ensuring that signals are updated in the correct order. 
 
 \begin{figure}[h]
-	\centerline{\includegraphics[width=\textwidth]{images/language-frdataflow-topologically-sorted-list.png}}
+	\centerline{\includegraphics[width=\textwidth]{images/Language-FrDataflow-TopologicallySortedList.png}}
 	\caption{The billboard as a topologically sorted list}
 	\label{fig:language-frdataflow-topologically-sorted-list}
 \end{figure}
