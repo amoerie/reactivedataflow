@@ -46,7 +46,7 @@ In figure \ref{fig:engine-architecture-1} we see the arguments queued up against
 \end{figure}
 
 Since all arguments are present for the first invocation, the \textit{average} instruction gets invoked, as shown in figure \ref{fig:engine-architecture-2}. This calls the plus instruction internally, which adds two new tokens to the queue: 2 and 6.
-Because tokens are enqueued at the end, the next thing that happens in figure \ref{fig:engine-architecture-3} is the same step for 1 and 5.
+Because tokens are enqueued at the end, the next thing that happens in figure \ref{fig:engine-architecture-3} is the same step for 1 and 5. Note that tokens are processed one by one, which is not directly obvious from the diagrams. For brevity, the diagrams only show states when an instruction can be executed in the next loop.
 
 \begin{figure}[h!]
 	\includegraphics[width=\textwidth]{images/Engine-Architecture-4.png}
@@ -131,6 +131,10 @@ Instead of completely buying into the dataflow engine, we only used its model to
 While this has the downside of reduced parallelism, it does improve correctness. Of course, it's impossible to prevent mutating global state or generally causing side effects in these callbacks, but a foolproof mechanism was not the intent of this experiment. 
 
 \section{Conclusion}
+
+In this chapter, we presented a tagged token dataflow engine. This is a runtime that enqueues arguments to instructions and executes these in parallel. 
+When interpreting code in the FrDataFlow language, the reactive signals are mapped to dataflow nodes in the engine using a custom mapping layer. During this process, mismatches between reactive programming and the dataflow model are tackled. For example, all source signals emit new values whenever one of them has a new value, to avoid signals waiting in the dataflow engine for inputs from all their parents. Secondly, since return values are not supported in the dataflow engine, the decision was made to only model signals as dataflow instructions and leave the rest of the code execution inside the original interpreter code. 
+In the end, we have a reactive system running atop a parallel dataflow engine, triggering updates in the correct way whenever a parent signal emits. 
 
 
 
