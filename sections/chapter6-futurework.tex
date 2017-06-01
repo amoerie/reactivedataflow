@@ -15,7 +15,7 @@ An implementation of this pattern can be observed in the RxJs\footnote{In RxJs, 
 
 \begin{figure}[h!]
 	\includegraphics[width=\textwidth]{images/FutureWork-DynamicSignals-Switch.png}
-	\caption{A timeline diagram of the \textit{switch} operator}
+	\caption{A timeline diagram of the \textit{switch} operator in RxJs}
 	\label{fig:futurework-dynamicsignals-switch}
 \end{figure}
 
@@ -32,16 +32,18 @@ An example visualization of the filter function in RxJs can be seen in figure  \
 
 \begin{figure}[h!]
 	\includegraphics[width=\textwidth]{images/FutureWork-Filtering-Filter.png}
-	\caption{A timeline diagram of the \textit{switch} operator}
+	\caption{A timeline diagram of the \textit{filter} operator in RxJs}
 	\label{fig:futurework-filtering-filter}
 \end{figure}
 
 We see at the top a signal which produces a stream of numbers. If we create a new signal that filters these numbers using the filter function, we get a new stream of numbers that only contains those that satisfied the predicate. When the number 0 is pushed into the signal lambda, it does not propagate it into the sink of the child signal, which means the value does not go through. 
 
-To implement this pattern in our mapping layer, we would have to ensure that dataflow nodes don't always have to produce new tokens when they are invoked. 
+To implement this pattern in our mapping layer, we would have to ensure that dataflow nodes don't always have to produce new tokens when they are invoked, and a way for nodes to indicate when this should happen or not. However, there is no technical reason why the dataflow engine should not be able to handle this: it is simply the presence of tokens that determines which nodes are invoked, so not emitting these tokens would essentially implement the filtering behavior we have described.
 
 
 \section{Conclusion}
 
+In this chapter we have shown how FrDataFlow is still a basic language that does not support some powerful concepts such as the dynamic creation of signals or the filtering of values.
+If these concepts were to be introduced, they would allow for an implementation of most of the techniques commonly found in other reactive libraries or languages.
 
-
+This initial version of FrDataFlow has focused mostly on the practical mapping layer from reactive programming to the dataflow model. There are however no immediate technical shortcomings that should prevent us from implementing the modifications presented in this chapter.
