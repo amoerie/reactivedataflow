@@ -38,9 +38,11 @@ In Elm, this problem was fixed by the introduction of a global event dispatcher,
 
 \subsubsection{Parallelization}
 
-In Elm, the constraints of the platform are slightly different. The JavaScript does not really provide native parallelization\footnote{Web workers exist, which were designed to be run in parallel. However, they come with two rather expensive limitations, the first being that messages between workers must be primitive data types, so there is no support for passing along functions with closures, only simple messages such as strings or numbers. Secondly, these web workers directly map to operating system threads, making them quite expensive to set up and tear down. The end result is that these workers are not a good fit for the small, atomic computations we are dealing with in reactive nodes.}.
+In Elm, the constraints of the platform are slightly different. The JavaScript runtime does not really provide native parallelization\footnote{Web workers exist, which were designed offload work in background threads. However, they come with two rather expensive limitations, the first being that messages between workers must be primitive data types, so there is no support for passing along functions with closures, only simple messages such as strings or numbers. Secondly, these web workers directly map to operating system threads, making them quite expensive to set up and tear down. The end result is that these workers are not a good fit for the small, atomic computations we are dealing with in reactive nodes.}, so while the language itself could perfectly support parallelism, unfortunately its platform does not. 
 
-Elm does provide some workarounds for 
+Elm does provide some workarounds for when the synchronous nature of its node processing causes performance bottlenecks, namely asynchronous updates. This keyword decouples a subset of the graph from the main graph and allows it to update independently, avoiding the situation where it would have to wait for long running synchronous updates. However, this is still purely a data correctness and timing feature and unfortunately does not tackle the lack of parallelization support.
+
+In fact, the paper does mention a possible solution to run Elm programs in parallel: if closures can be avoided somehow (for example by compiling to an intermediate language which explicitly lists the used captured variables) and if functions are passed as strings (and then dynamically interpreted inside the workers), web workers could technically provide a parallel execution mechanism. It was not considered wortwhile though, because of the amount of overhead to orchestrate this and the possible security ramifications.
 
 
 \section{Dataflow Model}
