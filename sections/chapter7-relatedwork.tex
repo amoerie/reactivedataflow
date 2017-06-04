@@ -1,5 +1,9 @@
 \chapter{Related work}
 
+\section{Introduction}
+
+In this chapter, we introduce a few related works and papers that align with concepts described in this dissertation. The language Elm for example describes in detail the challenges of functional reactive programming, tackling many of the same problems and describing similar solutions as encountered in FrDataFlow. Despite the similarities, the difference in platforms (Elm has to adhere to the limitations of the JavaScript execution engine in browsers, while FrDataFlow is constrained to the limits of the Racket runtime) has a significant impact on the potential to parallelization. 
+
 \section{Reactive programming}
 
 \subsection{Elm}
@@ -8,7 +12,7 @@ In 2012, Evan Czaplicki wrote his dissertation on Elm \citep{czaplicki_elm:_2012
 Most of the reactive programming concepts in FrDataFlow were actually heavily inspired by Elm, such as \textit{signals} and the \textit{lift} function. 
 Another concept inspired by Elm is signal graphs: reactive primitives as nodes and value flows as edges. Of course, source signals are a bit different in the web. For example, Elm provides source signals that represent mouse clicks, mouse positions or generally any kind of DOM event which is captured by the standard library. In the isolated, experimental little world of FrDataFlow, primitive source signals other than the current time were hard to come by. 
 
-\subsubsection{Parallelization}
+\subsubsection{Order of events}
 
 Looking at a signal graph, it is easy to imagine the parallel execution of the nodes. However, the order of events is very important. 
 Take for example the signal graph shown in figure \ref{fig:relatedwork-elm-eventsorder}.
@@ -26,12 +30,17 @@ Now imagine that these computations are run in parallel and that their outputs a
 
 In Elm, this problem was fixed by the introduction of a global event dispatcher, which imposes a few constraints on the signal graph update loop:
 
-\begin{itemization}
+\begin{itemize}
 	\item Signals with more than one parent must wait for all parents to produce a value before recomputation happens. This is the same approach taken in FrDataFlow. 
 	\item When source signals emit a new value, all nodes receive that event and pass forward a "nothing changed" notification. In FrDataFlow, the approach is to simply push the current value. 
-\end{itemization}
+\end{itemize}
 
-In Elm, the constraints of the platform are slightly different. JavaScript does not support parallelization - at all - so while the Elm language has no technical constraints regarding parallelism, the end result is unfortunately not parallel. 
+
+\subsubsection{Parallelization}
+
+In Elm, the constraints of the platform are slightly different. The JavaScript does not really provide native parallelization\footnote{Web workers exist, which were designed to be run in parallel. However, they come with two rather expensive limitations, the first being that messages between workers must be primitive data types, so there is no support for passing along functions with closures, only simple messages such as strings or numbers. Secondly, these web workers directly map to operating system threads, making them quite expensive to set up and tear down. The end result is that these workers are not a good fit for the small, atomic computations we are dealing with in reactive nodes.}.
+
+Elm does provide some workarounds for 
 
 
 \section{Dataflow Model}
