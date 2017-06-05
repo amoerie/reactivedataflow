@@ -57,7 +57,7 @@ Even though the underlying mechanism will still be identical to more traditional
 
 \subsection{Introduction}
 
-The dataflow model is a paradigm focused on the parallel execution of programs. In this paradigm, instructions are seen as isolated units, which should be able to execute whenever the necessary parameters have been provided. Contrary to imperative programming, instructions are not invoked by a program counter, but rather whenever all of the parameters are present. 
+The dataflow model \citep{johnston_advances_2004} is a paradigm focused on the parallel execution of programs. In this paradigm, instructions are seen as isolated units, which should be able to execute whenever the necessary parameters have been provided. Contrary to imperative programming, instructions are not invoked by a program counter, but rather whenever all of the parameters are present. 
 
 The execution of instructions in the dataflow model can be seen as a direct graph of nodes where each node represents an instruction and each edge is the output being sent to the next instructions that require the output as arguments. It is up to the dataflow engine to orchestrate the flow of arguments so that instructions are invoked correctly and in the correct order.
 
@@ -79,7 +79,7 @@ d = a + b
 This assumes that the variable b and c are provided to the program.
 In a traditional execution, the variable a would be set to the sum of b and c and the variable d would be set to the sum of a and b. Note that the sequence in which these operations are executed is of vital importance: switching the two statements would result in different values for the variable d!
 
-\begin{figure}[h]
+\begin{figure}[ht]
     \centerline{\includegraphics[width=\textwidth]{images/background-dataflow-example.png}}
 	\caption{Graph of instructions}
 	\label{fig:background-dataflow-example}

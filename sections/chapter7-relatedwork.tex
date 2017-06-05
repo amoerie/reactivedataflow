@@ -2,7 +2,9 @@
 
 \section{Introduction}
 
-In this chapter, we introduce a few related works and papers that align with concepts described in this dissertation. The language Elm for example describes in detail the challenges of functional reactive programming, tackling many of the same problems and describing similar solutions as encountered in FrDataFlow. Despite the similarities, the difference in platforms (Elm has to adhere to the limitations of the JavaScript execution engine in browsers, while FrDataFlow is constrained to the limits of the Racket runtime) has a significant impact on the potential to parallelization. 
+In this chapter, we introduce a few related works and papers that align with concepts described in this dissertation. The language Elm for example describes in detail the challenges of functional reactive programming, tackling many of the same problems and describing similar solutions as encountered in FrDataFlow. Despite the similarities, the difference in platforms (Elm has to adhere to the limitations of the JavaScript execution engine in browsers, while FrDataFlow is constrained to the limits of the Racket runtime) has a significant impact on the potential to parallelization. Another source of inspiration was FrTime, a DrScheme implementation of reactive patterns with some subtle yet powerful differences. Its focus lies more on the implicit transformation of regular programs to reactive programs, while FrDataFlow remains very explicit about the existence of signals.
+
+Finally, we discuss the virtual machine design of the dataflow engine that FrDataFlow uses to execute its instructions. This VM builds on the principles of tagged token dataflow and provides a platform upon which the reactive nodes in FrDataFlow are scheduled and executed. 
 
 \section{Reactive programming}
 
@@ -75,12 +77,24 @@ A major difference between FrTime and FrDataFlow is its update model. FrDataFlow
 
 In FrDataFlow, callbacks and closures are not an essential part of the update mechanism. All signals are stored in a topologically sorted graph, where each signal can access its parents and children. When a new value propagates through the graph, the update loop simply grabs the necessary information from the parent signals to provide to the child.
 
-FrTime's callback model in combination with their queue based update algorithm actually comes with a string of performance problems, which they try to address by \textit{lowering} \cite{burchett_lowering:_2007} their operators, essentially collapsing multiple operations into one to reduce overhead and to minimize the graph size. Although this considerably improves execution time, it unfortunately also reduces parallelization opportunities by growing the size of one signal node. 
-
+FrTime's callback model in combination with their queue based update algorithm actually comes with a string of performance problems, which they try to address by \textit{lowering} \cite{burchett_lowering:_2007} their operators, essentially collapsing multiple operations into one to reduce overhead and to minimize the graph size. Although this considerably improves execution time, it unfortunately also reduces parallelization opportunities by growing the size of one signal node. In FrDataFlow, no such optimizations are considered. 
 
 \section{Dataflow Model}
 
-\subsection{title}
+\subsection{Virtual machine design for the execution of languages on dataflow machines}
+
+In \cite{saey_extensible_2017}, a virtual machine design is presented to execute instructions on dataflow machines. This VM tries to offer a framework in which the principles of tagged token dataflow are strictly adhered to, while allowing full access to the tokens and execution context from within a single dataflow node, i.e. an operation. This allows the creation of operations which can manipulate the destination they send data to, enabling conditional statements and dynamic flow in general. To enable closures, operations also receive access to the active working memory of the current context. 
+In short, this design is intended to support all common flows expected in a high level language, such as function calls, closures, recursion, exception handling, etc.
+
+A Python implementation of this design is DVM \citep{saey_towards_2014}, by the same author. This virtual machine applies the rules and principles described earlier and provides a platform upon which dataflow instructions can be run in a custom language called \textit{DIS}. 
+
+For FrDataFlow, a lightweight variant of this engine has been implemented in Racket, to avoid the overhead of having to communicate between Racket and Python. Instead of interpreting DIS commands, the dataflow primitives are modeled as Racket tuples or values and natively fed into the engine.
+
+\section{Conclusion}
+
+In this chapter, we presented other research that closely relates to and strongly inspired FrDataFlow. Elm, the web programming language with a strong focus on FRP, introduced many of the same concepts also applied in FrDataFlow. FrTime has similar semantics, but chose to hide its internals more from the end user. For the execution of our signal nodes, we applied the virtual machine design of DVM in Racket to map our reactive nodes as dataflow operations. 
+
+
 
 
 
