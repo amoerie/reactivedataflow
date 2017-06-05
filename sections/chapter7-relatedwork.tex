@@ -46,7 +46,7 @@ In fact, the paper does mention a possible solution to run Elm programs in paral
 
 \subsection{FrTime}
 
-Another ambitious project that is closely related to FrDataFlow is \textit{FrTime}. This is a reactive programming language that implicitly implements signals for primitive operators. The idea is that applications written in regular Scheme could be switched over to FrTime to introduce reactive programming without having to rewrite the code. Contrary to FrDataFlow, expressions in FrTime do not require explicit use of the lift operator, but are implicitly used when any of the primitive operators are used. For full effect, FrTime provides a REPL (Read Eval Print Loop) console which takes expressions and immediately prints the result. There is an extra feature though: values which are signals keep getting updated in the history. When for example the plus operator is applied to a fixed number and the current seconds, this creates a signal which continuously updates with the result, inside the console. Rather than evaluating the expression and returning a signal like in FrDataFlow, FrTime immediately returns a value and keeps updating that value, even inside the REPL history. 
+Another project that is closely related to FrDataFlow is \textit{FrTime}. This is a reactive programming language that implicitly implements signals for primitive operators. The idea is that applications written in regular Scheme could be switched over to FrTime to introduce reactive programming without having to rewrite the code. Contrary to FrDataFlow, expressions in FrTime do not require explicit use of the lift operator, but are implicitly used when any of the primitive operators are used. For full effect, FrTime provides a REPL (Read Eval Print Loop) console which takes expressions and immediately prints the result. There is an extra feature though: values which are signals keep getting updated in the history. When for example the plus operator is applied to a fixed number and the current seconds, this creates a signal which continuously updates with the result, inside the console. Rather than evaluating the expression and returning a signal like in FrDataFlow, FrTime immediately returns a value and keeps updating that value, even inside the REPL history. 
 
 \begin{lstlisting}[caption={REPL in FrTime},captionpos=b,label={lst:relatedwork-frtime-repl}]
 > seconds 			
@@ -79,6 +79,8 @@ FrTime's callback model in combination with their queue based update algorithm a
 
 
 \section{Dataflow Model}
+
+\subsection{title}
 
 
 
