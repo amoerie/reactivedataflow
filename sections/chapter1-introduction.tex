@@ -9,17 +9,24 @@ This model enforces instruction execution whenever the inputs are available, con
 
 \section{Context}
 
-Reactive programming nor the dataflow model are new technologies, both actually go back to at least the 1980s \citep{harel_development_1985, veen_dataflow_1986}. They both try to solve different problems, but they share an interesting common trait: the evaluation models of both use directed graphs to orchestrate data flowing through its applications. 
+Reactive programming nor the dataflow model are new technologies, both go back to at least the 1980s \citep{harel_development_1985, veen_dataflow_1986}. While they try to solve different problems, they do share an interesting common trait: the evaluation models of both use directed graphs to orchestrate data flowing through its applications. 
 
 The core principle of reactive programming is making events a first class citizen: they can be listened to, transformed or even composed with other events, ultimately building a graph of nodes that represent these events and the data dependencies between them. When the application executes, data courses through this graph via the \textit{reactions} of the nodes when an event is fired. One could say that the system \textit{reacts} to every event.
 
-The dataflow model on the other hand has a different purpose: parallelizing instructions as much as possible by isolating each instruction and executing it whenever the inputs are ready. The runtime in this scenario is responsible for tracking the inputs of each instruction and forwarding the results to the next instruction. These dependencies between instructions again form a graph. This time however, nodes in the graph represent primitive instructions. Dependencies in this graph simply indicate that one instruction takes as input the output of another. 
+The dataflow model on the other hand has a different purpose: parallelizing instructions as much as possible by isolating each instruction and executing it whenever the inputs are ready. The runtime in this scenario is responsible for tracking the inputs of each instruction and forwarding the results to other instructions that depend on it. These dependencies between instructions again form a graph. This time however, nodes in the graph represent instructions, not events. Dependencies in this graph simply indicate that one instruction takes as input the output of another. 
+
+So while reactive programming uses a graph of nodes which represent events, the dataflow model has a graph which represents instructions. When executed, data flows through these graphs and the output of a node is forwarded to nodes further down the graph. Conceptually, nodes in these graphs mean different things in the two models, but the way that they behave is undeniably similar.
 
 \section{Goals}
 
-To achieve parallelism in reactive programs, we propose implementing a new runtime which implements a reactive programming language using a dataflow engine underneath. Instead of applying one of the traditional evaluation methods 
+The goal of this thesis is to explore the possible benefits of running a reactive language on top of a dataflow engine, more specifically the advantages with regards to parallel execution. We propose that the update mechanism necessary to support a reactive language can be completely implemented using a dataflow engine, with the aim to parallelize the updating of separate nodes in the reactive graph. 
+This would allow us to scale a reactive program horizontally, exploiting the maximum amount of parallelism possible. Moore's law essentially states that the processing power of a single processor core doubles nearly every 2 years. The last few years however, this exponential factor has been decreasing and more focus has been going towards splitting up processors into multiple cores. To make full use of these cores though, programs have to natively support parallel execution. 
+Given a successful mapping from reactive programming to the dataflow model, we can prove that reactive programming is a future proof paradigm, well suited for parallel evaluation. 
 
 \section{Contributions}
+
+In order to test our hypothesis, we present a new reactive programming language \textit{FrDataFlow}, based on Racket with a few extra features to natively support reactive programming. Expressions in this language are evaluated by our own interpreter, which builds the aforementioned graph in the background and keeps it up to date. 
+
 
 
 -- Reactive Programming --> mention ubiquity of events, declarative programming, etc.
