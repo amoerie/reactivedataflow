@@ -1,5 +1,26 @@
 
 \chapter{Introduction}
 
+Reactive programming is becoming increasingly popular. Over the past decade, we have observed a slow but steady shift away from traditional imperative methodologies towards other, more declarative paradigms.
+The technology landscape is moving, and with it the software development world. Web and mobile applications, the \textit{internet of things} and now virtual reality software are dominating the conversation, and they all have one thing in common: they are driven by events. Events, callbacks and asynchronous computation have always been challenging, so it's not hard to see why reactive programming - which puts events at the forefront as first class citizens - is gaining such popularity. Its declarative style and modeling of \textit{values over time} is a perfect fit for environments with many impulses, such as the web.
+
+Evaluation models for this style of programming are plenty, but none of them come with free parallelism. As can be expected, research has already gone into parallelizing reactive programs \citep{peterson_parallel_2000}, but none have tried mapping these applications onto something that was designed to run parallel from the beginning: the dataflow model. 
+This model enforces instruction execution whenever the inputs are available, contrary to the sequential model where instructions are executed one after another, which sets up the perfect conditions to run in parallel.
+
+\section{Context}
+
+Reactive programming nor the dataflow model are new technologies, both actually go back to at least the 1980s \citep{harel_development_1985, veen_dataflow_1986}. They both try to solve different problems, but they share an interesting common trait: the evaluation models of both use directed graphs to orchestrate data flowing through its applications. 
+
+The core principle of reactive programming is making events a first class citizen: they can be listened to, transformed or even composed with other events, ultimately building a graph of nodes that represent these events and the data dependencies between them. When the application executes, data courses through this graph via the \textit{reactions} of the nodes when an event is fired. One could say that the system \textit{reacts} to every event.
+
+The dataflow model on the other hand has a different purpose: parallelizing instructions as much as possible by isolating each instruction and executing it whenever the inputs are ready. The runtime in this scenario is responsible for tracking the inputs of each instruction and forwarding the results to the next instruction. These dependencies between instructions again form a graph. This time however, nodes in the graph represent primitive instructions. Dependencies in this graph simply indicate that one instruction takes as input the output of another. 
+
+\section{Goals}
+
+To achieve parallelism in reactive programs, we propose implementing a new runtime which implements a reactive programming language using a dataflow engine underneath. Instead of applying one of the traditional evaluation methods 
+
+\section{Contributions}
 
 
+-- Reactive Programming --> mention ubiquity of events, declarative programming, etc.
+-- Dataflow programming --> mention Moore's law
