@@ -3,16 +3,47 @@
 \section{Introduction}
 
 In this chapter, a dataflow engine is presented based on the work detailed in \citet{saey_extensible_2017}.
-This engine is designed to support parallel execution of instructions by queuing all arguments to instructions and executing these in a scope agnostic way.
-Tagged token dataflow is an extension to the data flow model where tags are used to distinguish the execution context of tokens, i.e. multiple calls to the same instruction with different arguments.
-For the purposes of this thesis, a lightweight version of this engine has been implemented in Racket to facilitate the mapping process from FrDataFlow. Furthermore, we implemented a mapping layer that translates reactive signals to data flow instructions. Even though there were some mismatches that needed to be addressed, the mapping was successful. 
+This engine is designed to support parallel execution of instructions by queuing all operands to instructions and executing these in a scope agnostic way.
+Tagged token dataflow is an extension to the data flow model where tags are used to distinguish the execution context of tokens, i.e. multiple invocations of the same instruction in a different execution context, for example by calling a function twice.
+For the purposes of this thesis, a lightweight version of this engine has been implemented in Racket to facilitate the mapping process from FrDataFlow. Furthermore, we implemented a mapping layer that translates reactive signals to data flow instructions. Even though there were some mismatches that needed to be addressed, reactive programs can now be expressed in FrDataFlow and evaluated atop the dataflow engine. 
 
 \newpage
 \section{Architecture}
 
-\subsection{Execution of instructions}
+\subsection{Components}
 
-Take for example a sample program which computes the average of two numbers, as shown in listing \ref{lst:engine-architecture-sample}
+The dataflow engine consists of four core components:
+
+\begin{description}[style=nextline]
+	\item[The token queue] This contains the tokens that need to be processed. A token has a value and meta data about which instruction it needs to be sent to. 
+	\item[The matching memory] This stores the operands per instruction and per context.
+	\item[The execution unit] This unit will actually invoke the instructions with its operands
+	\item[The tokenizer] When an instruction has been invoked, its output again is wrapped in a token and put on the token queues, which is done by the tokenizer.
+\end{description}
+
+The interaction between these four components can be seen in figure \ref{fig:engine-architecture-tokenprocessing}. 
+What the dataflow engine essentially does is continuously pull tokens from the queue, send it through the matching memory which calls the execution unit. This will invoke the instruction with its operands, pass on the result to the tokenizer which will wrap it in a token and put it on the queue again. 
+
+\begin{figure}[h!]
+	\includegraphics[width=\textwidth]{images/Engine-Architecture-TokenProcessing.png}
+	\caption{The interaction between the four components of the dataflow engine}
+	\label{fig:engine-architecture-tokenprocessing}
+\end{figure}
+
+\newpage
+
+For clarity, figure \ref{fig:background-dataflow-token-again} is repeated here (from the Background chapter) to reiterate the structure of a token. 
+
+\begin{figure}[ht]
+	\centerline{\includegraphics[width=\textwidth]{images/background-dataflow-token.png}}
+	\caption{A tagged token}
+	\label{fig:background-dataflow-token-again}
+\end{figure}
+
+
+\subsection{Example program with evaluation by the dataflow engine}
+
+Take for example a non reactive sample program which computes the average of two numbers, as shown in listing \ref{lst:engine-architecture-sample}
 
 \begin{lstlisting}[caption={Computing the average of two numbers},captionpos=b,label={lst:engine-architecture-sample},language=FrDataFlow]
 (define (average x y)
@@ -22,12 +53,12 @@ Take for example a sample program which computes the average of two numbers, as 
 (average 1 5)
 \end{lstlisting}
 
-This program computes the average of two numbers twice using different arguments. When this program gets evaluated in the data flow engine, the four arguments are added to the token queue, containing information about which execution context they belong to and what should happen to the result. 
+This program computes the average of two numbers twice using different arguments. When this program gets evaluated in the data flow engine, the four arguments are added to the token queue, containing information about which execution context they belong to and what should happen with the result. 
 In this example, the 2 and 6 belong to the same execution context, while 1 and 5 will belong to a different one. 
 
 \begin{figure}[h!]
 	\includegraphics[width=\textwidth]{images/Engine-Architecture-1.png}
-	\caption{The \textit{average} instruction gets called twice}
+	\caption{The \textit{average} instruction gets invoked twice}
 	\label{fig:engine-architecture-1}
 \end{figure}
 
@@ -35,17 +66,17 @@ In figure \ref{fig:engine-architecture-1} we see the arguments queued up against
 
 \begin{figure}[h!]
 	\includegraphics[width=\textwidth]{images/Engine-Architecture-2.png}
-	\caption{The arguments are forwarded to the \textit{plus} instruction}
+	\caption{The operands are forwarded to the \textit{plus} instruction}
 	\label{fig:engine-architecture-2}
 \end{figure}
 
 \begin{figure}[h!]
 	\includegraphics[width=\textwidth]{images/Engine-Architecture-3.png}
-	\caption{The next set of arguments are also forwarded to the \textit{plus} instruction}
+	\caption{The next set of operands are also forwarded to the \textit{plus} instruction}
 	\label{fig:engine-architecture-3}
 \end{figure}
 
-Since all arguments are present for the first invocation, the \textit{average} instruction gets invoked, as shown in figure \ref{fig:engine-architecture-2}. This calls the plus instruction internally, which adds two new tokens to the queue: 2 and 6.
+Since all inputs are present for the first invocation, the \textit{average} instruction gets invoked, as shown in figure \ref{fig:engine-architecture-2}. This invokes the plus instruction, which adds two new tokens to the queue: 2 and 6.
 Because tokens are enqueued at the end, the next thing that happens in figure \ref{fig:engine-architecture-3} is the same step for 1 and 5. Note that tokens are processed one by one, which is not directly obvious from the diagrams. For brevity, the diagrams only show states when an instruction can be executed in the next loop.
 
 \begin{figure}[h!]
@@ -62,7 +93,7 @@ Because tokens are enqueued at the end, the next thing that happens in figure \r
 
 When the \textit{plus} instruction has completed its work, it enqueues the result as a new token again, sending it along to the \textit{quotient} instruction. This is possible because of the information contained in the tokens: they know where to go next when instructions have completed. 
 In figure \ref{fig:engine-architecture-4} and \ref{fig:engine-architecture-5} we see this process happening for both execution contexts.
-Note that the tags are very important here, otherwise the engine would not be aware which arguments belong to the same invocation. There is no guarantee that tokens will always be enqueued in the correct order.
+Note that the tags are very important here, otherwise the engine would not be aware which inputs belong to the same invocation. There is no guarantee that tokens will always be enqueued in the correct order.
 
 \begin{figure}[h!]
 	\includegraphics[width=\textwidth]{images/Engine-Architecture-6.png}

@@ -96,9 +96,9 @@ In a traditional execution, the variable a would be set to the sum of b and c an
 	\label{fig:background-dataflow-example}
 \end{figure}
 
-In a dataflow engine, these instructions are registered as nodes in the dependency graph, as visualized by figure \ref{fig:background-dataflow-example}. The values of b and c are added as tokens to the processing pipeline at application startup. The value of b is added as a token twice; once for the "+" instruction which computes the value of a and once for the "+" instruction which computes the value of d. When the dataflow engine spins up and starts processing data, it sends the tokens for b and c to the first "+" instruction, which is triggered because all of its inputs are present. This produces a value for a, which gets added as a token to the processing pipeline again as the first operand for the second "+" instruction. This instruction now also has all of its inputs present, which allows it to compute the value for variable d at this point.
+In a dataflow engine, these instructions are registered as nodes in the dependency graph, as visualized by figure \ref{fig:background-dataflow-example}. What really happens is that the values of b and c are added as tokens to the processing pipeline at application startup. The value of b is added as a token twice; once for the "+" instruction which computes the value of a and once for the "+" instruction which computes the value of d. When the dataflow engine spins up and starts processing data, it sends the tokens for b and c to the first "+" instruction, which is triggered because all of its inputs are present. This produces a value for a, which gets added as a token to the processing pipeline again as the first operand for the second "+" instruction. This instruction now also has all of its inputs present, which allows it to compute the value for variable d at this point.
 
-If at any point in the future, b or c (which should be seen as the output of other instructions not shown in the sample code) produce new values, these would be enqueued again for further processing.
+If at any point in the future, b or c (which should be seen as the output of other instructions not shown in the sample code) produce new values, these would be enqueued again in the pipeline for further processing.
 
 \subsection{Advantages}
 
