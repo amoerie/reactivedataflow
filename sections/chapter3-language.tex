@@ -23,7 +23,7 @@ current-temp-fahrenheit
 Take for example a roadside digital billboard which displays the current date and temperature. To show this information, we can derive a signal that contains the exact information that needs to be shown, using the built in signals in FrDataFlow. 
 From the \textit{current-unix-timestamp} signal, we can compute the date using the built in procedures \textit{seconds->date} and \textit{date->string}. The temperature is unfortunately in fahrenheit, so we will convert it to Celsius first. Lastly, we combine these signals into a single signal that contains the text we want to show. See listing \ref{lst:language-frdataflow-billboard} for the full definition of the billboard text written with FrDataFlow constructs. 
 
-\begin{lstlisting}[caption={Billboard},captionpos=b,label={lst:language-frdataflow-billboard}]
+\begin{lstlisting}[caption={Billboard},captionpos=b,label={lst:language-frdataflow-billboard},mathescape,language=FrDataFlow]
 (define (fahrenheit->celsius fahrenheit)
   (quotient (* (- fahrenheit 32) 5) 9))
 (define current-temp-celsius
@@ -33,11 +33,10 @@ From the \textit{current-unix-timestamp} signal, we can compute the date using t
 (define billboard-label
   (lift
     (lambda (temperature date)
-      (string-append "Temperature: " (number->string temperature) "C°, Date: " (date->string date)))
+      (string-append "Temperature: " (number->string temperature) "C$\degree$, Date: " (date->string date)))
      current-temp-celsius
      current-date))   
 \end{lstlisting}
-
 This ultimately produces a signal \textit{billboard-label} which will update every time either \textit{current-unix-timestamp} or \textit{current-temp-fahrenheit} produce new values. When this happens, the runtime will recalculate the values of \textit{current-date} and \textit{current-temp-celsius}, which in turn will trigger the update of \textit{billboard-label}. Also note that \textit{billboard-label} will not produce a value until both the current date and the current temperature are known. 
 
 \subsection{Evaluation}

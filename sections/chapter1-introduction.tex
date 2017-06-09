@@ -26,3 +26,33 @@ This would allow us to scale a reactive program horizontally, exploiting the max
 In order to test our hypothesis, we present a new reactive programming language \textit{FrDataFlow}, based on Racket with a few extra features to natively support reactive programming. Expressions in this language are evaluated by our own interpreter, which builds the aforementioned graph in the background and keeps it up to date. Rather than implementing our own update mechanism however, the reactive graph is translated to instructions for our custom dataflow engine. This is the core mechanism which will orchestrate the events and keep nodes in the graph up to date.
 
 Furthermore, we evaluate this approach by comparing it to an implementation of the same language that does not run on a dataflow engine, but applies a more traditional evaluation model. Benchmarks are provided for both latency and throughput for both implementations. Lastly, we also investigate the scaling possibilities of FrDataFlow by actually running it across multiple cores simultaneously. 
+
+\section{Structure}
+
+This dissertation is structured to provide the reader with sufficient context before the actual research and evaluation is discussed. To this end, chapter 2 provides a general background with regards to both reactive programming and the dataflow model. It succinctly covers the problems they want to solve, how they attempt to do so, the advantages of these approaches and a short example illustrating how they work.
+
+In chapter 3, our custom language FrDataFlow is presented, with an elaborate sample program displaying most of the features supported by the language. The evaluation of this example by our interpreter is then visually detailed with diagrams and corresponding explanations. 
+
+The dataflow engine is discussed in chapter 4. This is an implementation of the dataflow model that powers the update mechanism in FrDataFlow. A short sample is provided to show how instructions are invoked in this engine, and how output from one instruction gets forwarded to the input argument of another. Next, the main research topic of this dissertation is presented: the mapping algorithm. This is the translation we make from the graph in reactive programming to a new graph of instructions for the dataflow engine. Encountered obstacles and corresponding workarounds are discussed.
+
+Chapter 5 details the evaluation of our research. 
+*** TODO ***
+*** TODO ***
+*** TODO ***
+*** TODO ***
+*** TODO ***
+*** TODO ***
+*** TODO ***
+
+In chapter 6, we summarize the boundaries at which this research has drawn a line and discuss possible future improvements or extensions to our system. We do this by recognizing features provided in other reactive languages or frameworks, that are not present in FrDataFlow. 
+
+Related research topics are discussed in chapter 7. We took great inspiration from ambitious works such as Elm and FrTime, which we compare with FrDataFlow in terms of design and evaluation. 
+
+Finally, we conclude with chapter 8, which summarizes our findings of this research.
+*** TODO ***
+*** TODO ***
+*** TODO ***
+*** TODO ***
+*** TODO ***
+*** TODO ***
+*** TODO ***
