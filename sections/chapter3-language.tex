@@ -39,8 +39,11 @@ From the \textit{current-unix-timestamp} signal, we can compute the date using t
 \end{lstlisting}
 This ultimately produces a signal \textit{billboard-label} which will update every time either \textit{current-unix-timestamp} or \textit{current-temp-fahrenheit} produce new values. When this happens, the runtime will recalculate the values of \textit{current-date} and \textit{current-temp-celsius}, which in turn will trigger the update of \textit{billboard-label}. Also note that \textit{billboard-label} will not produce a value until both the current date and the current temperature are known. 
 
-\subsection{Evaluation}
+\subsection{Evaluation without the dataflow engine}
 
+For the initial version of FrDataFlow, the metacircular interpreter in Racket was extended to natively support signals. Note that this does \textbf{not} include any mapping to the dataflow engine yet. 
+How the example program is evaluated and how the signals are kept up to date by this initial version of the runtime will now be described in detail. 
+ 
 \subsubsection{Preprocessing}
 
 When this program is evaluated, FrDataFlow will dynamically build the signal graph by registering dependent signals as children on each signal. This means that, when a \textit{lift} function is invoked, it will register the newly created signal as a child in every signal that is referenced. Figure \ref{fig:language-frdataflow-example} is a visualization of this graph for the example given in listing \ref{lst:language-frdataflow-billboard}.
@@ -51,7 +54,7 @@ When this program is evaluated, FrDataFlow will dynamically build the signal gra
 	\label{fig:language-frdataflow-example}
 \end{figure}
 
-Secondly, FrDataFlow will topologically sort this graph into a list, in which the signals are sorted by having the least dependencies. The position of a signal in this list indicates that it can be a child to signals that come before it, and that its children must come after it in the list. This allows FrDataFlow to simply loop over this topologically sorted list from start to finish, ensuring that signals are updated in the correct order. 
+Secondly, FrDataFlow will topologically sort this graph into a list, which means each signal appears later in the list than the signals it depends on. In other words, the position of a signal in this list indicates that it can be a child to signals that come before it, and that its children must come after it in the list. This allows FrDataFlow to simply loop over this topologically sorted list from start to finish, ensuring that signals are updated in the correct order. 
 
 \begin{figure}[h]
 	\centerline{\includegraphics[width=\textwidth]{images/Language-FrDataflow-TopologicallySortedList.png}}
@@ -64,11 +67,11 @@ Secondly, FrDataFlow will topologically sort this graph into a list, in which th
 To implement the update behavior, each signal has a boolean flag indicating if it is stale or not. 
 Upon startup of the runtime, FrDataFlow initializes a never ending update loop which loops over the topologically sorted list (as shown in figure \ref{fig:language-frdataflow-topologically-sorted-list}), skipping any signals which are not stale. 
 If it encounters a stale signal, the lambda function that was provided during the creation of the signal will be called with the latest values of the parent signals. The signal is flagged as no longer being stale, and its direct children are flagged as stale immediately. Take for example an update of the current temperature. We start with a situation where the current date and temperature are already known and shown on the billboard, so the state of the signal graph looks like what is shown in figure \ref{fig:language-frdataflow-1}. 
-Note that built in signals in FrDataFlow do not have a staleness flag, because they are kept up to date in separate runtime loops. 
+Note that built in signals (i.e. source signals) in FrDataFlow do not have a staleness flag, because they are kept up to date in separate background loops. For example, a standalone infinite loop keeps the \textit{current-seconds} signal up to date by updating its value every second. 
 
 \begin{figure}[h]
 	\centerline{\includegraphics[width=\textwidth]{images/language-frdataflow-1.png}}
-	\caption{The initial state of the billboard}
+	\caption{The initial state of the billboard. Green = Not stale}
 	\label{fig:language-frdataflow-1}
 \end{figure}
 
@@ -76,7 +79,7 @@ When the new temperature is observed, the direct children of \textit{current-tem
 
 \begin{figure}[h]
 	\centerline{\includegraphics[width=\textwidth]{images/language-frdataflow-2.png}}
-	\caption{A new temperature is emitted by current-temp-fahrenheit}
+	\caption{A new temperature is emitted by current-temp-fahrenheit. Blue = New value, not stale, Grey = Stale}
 	\label{fig:language-frdataflow-2}
 \end{figure}
 
@@ -89,8 +92,8 @@ However, it also immediately flags \textit{billboard-label} as stale, because it
 	\label{fig:language-frdataflow-3}
 \end{figure}
 
-When the update loop moves further down the topologically sorted list, it sees that \textit{billboard-label} is also stale now. It grabs the latest values from \textit{current-temp-celsius} and \textit{current-date} and calls the lambda again that was used to create \textit{billboard-label}, removing the stale flag when it is done. The final result is shown in figure \ref{fig:language-frdataflow-4}. 
-At this point, the update loop starts over again, waiting until another built in signal produces a new value. 
+When the update loop moves further down the topologically sorted list, it sees that \textit{billboard-label} is stale now. It grabs the latest values from \textit{current-temp-celsius} and \textit{current-date} and calls the lambda that was used to create \textit{billboard-label}, setting the stale flag to false when it is done. The final result is shown in figure \ref{fig:language-frdataflow-4}. 
+At this point, the update loop starts over again, repeating ad infinitum. Every time, the loop checks if a signal is stale and repeats the update process as described above. If no signals are stale, it keeps looping until that changes. 
 
 \begin{figure}[h]
 	\centerline{\includegraphics[width=\textwidth]{images/language-frdataflow-4.png}}
