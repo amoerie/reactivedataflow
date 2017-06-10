@@ -4,25 +4,18 @@
 
 In this chapter we present the limitations and possible improvements of FrDataFlow. 
 The current implementation is rather limited in its functionality because we wanted to focus on the mapping layer and the possibilities of parallelization using the dataflow engine.
-However, multiple improvements can still be made. The setup of signals is still a rigid system in that it does not allow the dynamic creation of new signals, the filtering of values or just generally manipulating the timing of value propagation. Every signal always has to emit a value for every set of incoming values. While this already allows for a rich set of programs, these manipulations would be necessary to implement any non trivial program using FrDataFlow. 
+However, multiple improvements can still be made. The signal graphs that can be made in FrDataFlow are still static, e.g. it does not allow the dynamic creation of new signals, the filtering of values or just generally manipulating the timing of value propagation. Every signal always has to emit a value for every set of incoming values. While this already allows for a rich set of programs, these manipulations would be necessary to implement any non trivial program using FrDataFlow. 
 
+\newpage
 \section{Dynamically creating signals}
 
-One of the common patterns in reactive programming is the dynamic creation of new signals based on some state or external input.
-In a web environment, imagine a program that searches a database while the user types keywords. This stream of text can be represented as a signal that is attached to the text input field and emits strings upon every keystroke. Then we create a child signal which subscribes which takes these strings and launches an XMLHTTPRequest (ajax request) to fetch the data that satisfies these keywords. Every request again can be modeled as a signal which emits the data that is retrieved and then goes silent. Essentially what this program is doing is dynamically creating a new signal (XMLHTTPRequest) for every value in another signal (the keystrokes). To take this example even further, when the user types another character, we would like to discard any previously created XMLHTTPRequests because we no longer care for their results. Ideally, some sort of cancellation could happen if it is not already too late, but we definitely want to ignore any data that is retrieved based on outdated keywords. This means our dynamically added signals are not only quickly created, but also discarded.
+One of the common patterns in reactive programming is the dynamic creation of new signals based on some state or external input. Imagine a button which starts a timer. When this button is pressed, a timer should start running and continuously update the screen with the elapsed time.
 
-An implementation of this pattern can be observed in the RxJs\footnote{In RxJs, a signal is known as an \textit{observable}. When signals dynamically produce more signals, they are called \textit{higher order observables}.} library. \citep{_observable_2017}. It contains the \textit{switch} operator, which is visually represented by figure \ref{fig:futurework-dynamicsignals-switch}.
+First of all, this button can be represented as a signal of clicks. Every click is essentially an event, which in terms of reactive programming can be represented as an event being emitted by a signal.
 
-\begin{figure}[h!]
-	\includegraphics[width=\textwidth]{images/FutureWork-DynamicSignals-Switch.png}
-	\caption{A timeline diagram of the \textit{switch} operator in RxJs}
-	\label{fig:futurework-dynamicsignals-switch}
-\end{figure}
+A timer is also a perfect fit for a signal: it is a signal that continuously emits the current elapsed seconds. The tricky part however is that we only want to create this timer when the button is pressed. That means we want to lift the button signal and create a new timer signal only when it is pressed. Maybe another button click stops the timer, or starts a second one, but that is outside the scope of this example.
 
-In this figure, we can see a top horizontal arrow which represents the root signal. Values of this signal are transformed into child signals, which on their part can again emit multiple values. 
-Since we are only interested in the latest data, we essentially \textit{unsubscribe} from the first child signal when a new value appears in the root signal, so that the sample values c and d never propagate to the end result. 
-
-In the current version of FrDataFlow, it is unfortunately not possible to create new signals at runtime. A possible improvement would be to allow this, which would mean the signal would have to be added to the topologically sorted signals and be translated to a dataflow node. This would also mean that any existing dataflow nodes upon which this new signal depends would have to be updated to also generate tokens for this new node. Similarly, upon destroying signals, this node and all the references to it would have to be updated.
+This pattern of dynamically creating signals is quite common in reactive programming, and unfortunately impossible in FrDataFlow today. A possible improvement would be to enable this, which would mean the signal would have to be added to the topologically sorted signals and be translated to a dataflow node. This would also mean that any existing dataflow nodes upon which this new signal depends would have to be updated to also generate tokens for this new node. Similarly, upon destroying signals, this node and all the references to it would have to be updated. The requirement for a static graph is currently one of the limitations of the dataflow model we use, but it would technically be possible, although it would introduce a considerable amount of bookkeeping overhead. 
 
 \subsection{Filtering}
 
