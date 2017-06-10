@@ -52,6 +52,7 @@ Signals can be used to model almost any concept in software development:
 
 Even though the underlying mechanism will still be identical to more traditional approaches (attaching event listeners to DOM events in HTML, opening and connecting to a WebSocket connection, etc.), the fact that all these concepts can be brought together under a single umbrella called \textit{signals} allows for the modeling of higher order operators to map, combine and filter these flows of values in ways that were previously a lot harder.
 
+\newpage
 \section{The Dataflow Model}
 
 \subsection{Introduction}
@@ -60,23 +61,24 @@ The dataflow model \citep{johnston_advances_2004} is a paradigm focused on the p
 
 The execution of a program in the dataflow model can be represented as a direct graph of nodes where each node represents an instruction and each edge is data traveling between instructions. It is up to the dataflow engine to orchestrate inputs so that instructions are invoked when all of the input data is present. Whenever an instruction is invoked, the output is sent through to all connected instructions which depend on it.
 
+\newpage
 \subsection{Tagged Token DataFlow}
 
 The dataflow model has different possible implementations, in this dissertation we solely focus on \textit{tagged token dataflow} \citep{arvind_executing_1990}.
 In this version, instruction arguments, i.e. tokens, are tagged with meta data. A token consists of the following parts, as shown in figure \ref{fig:background-dataflow-token}:
-
-\begin{enumerate}
-	\item The value, also called the datum, in this example "abc"
-	\item The operation address, which uniquely identifies the instruction to be invoked
-	\item The port, which uniquely identifies the position of the token, should an instruction need multiple tokens for a single invocation.
-	\item The execution context. This uniquely identifies an invocation, and is meant to distinguish different function calls from one another. This essentially allows to graph reentrant. 
-\end{enumerate}
 
 \begin{figure}[ht]
 	\centerline{\includegraphics[width=\textwidth]{images/background-dataflow-token.png}}
 	\caption{A tagged token}
 	\label{fig:background-dataflow-token}
 \end{figure}
+
+\begin{description}[style=nextline]
+	\item[The value] Also called the datum, in this example "abc"
+	\item[The instruction address] Uniquely identifies the instruction to be invoked
+	\item[The port] Uniquely identifies the position of the token, should an instruction need multiple tokens for a single invocation.
+	\item[The execution context] This uniquely identifies a function call, and is meant to distinguish instruction invocations of different function calls. This essentially allows the graph to be made reentrant. 
+\end{description}
 
 \subsection{Example}
 

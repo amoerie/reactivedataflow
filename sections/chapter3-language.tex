@@ -71,7 +71,7 @@ Note that built in signals (i.e. source signals) in FrDataFlow do not have a sta
 
 \begin{figure}[h]
 	\centerline{\includegraphics[width=\textwidth]{images/language-frdataflow-1.png}}
-	\caption{The initial state of the billboard. Green = Not stale}
+	\caption{The initial state of the billboard. \textbf{\textcolor{OliveGreen}{Green = Not stale}}}
 	\label{fig:language-frdataflow-1}
 \end{figure}
 
@@ -79,7 +79,7 @@ When the new temperature is observed, the direct children of \textit{current-tem
 
 \begin{figure}[h]
 	\centerline{\includegraphics[width=\textwidth]{images/language-frdataflow-2.png}}
-	\caption{A new temperature is emitted by current-temp-fahrenheit. Blue = New value, not stale, Grey = Stale}
+	\caption{A new temperature is emitted by current-temp-fahrenheit. \textbf{\textcolor{RoyalBlue}{Blue = New value and not stale}}, \textbf{\textcolor{gray}{Grey = Stale}}}
 	\label{fig:language-frdataflow-2}
 \end{figure}
 
@@ -101,6 +101,7 @@ At this point, the update loop starts over again, repeating ad infinitum. Every 
 	\label{fig:language-frdataflow-4}
 \end{figure}
 
+\newpage
 \section{Conclusion}
 
 In this chapter the reactive language FrDataFlow was presented with samples and diagrams of its implementation.

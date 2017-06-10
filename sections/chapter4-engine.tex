@@ -4,7 +4,7 @@
 
 In this chapter, a dataflow engine is presented based on the work detailed in \citet{saey_extensible_2017}.
 This engine is designed to support parallel execution of instructions by queuing all operands to instructions and executing these in a scope agnostic way.
-Tagged token dataflow is an extension to the data flow model where tags are used to distinguish the execution context of tokens, i.e. multiple invocations of the same instruction in a different execution context, for example by calling a function twice.
+Tagged token dataflow is an extension to the data flow model where tags are used to distinguish the execution context of tokens, i.e. multiple invocations of the same instruction with different execution contexts, for example calling the same function twice.
 For the purposes of this thesis, a lightweight version of this engine has been implemented in Racket to facilitate the mapping process from FrDataFlow. Furthermore, we implemented a mapping layer that translates reactive signals to data flow instructions. Even though there were some mismatches that needed to be addressed, reactive programs can now be expressed in FrDataFlow and evaluated atop the dataflow engine. 
 
 \newpage
@@ -53,63 +53,49 @@ Take for example a non reactive sample program which computes the average of two
 (average 1 5)
 \end{lstlisting}
 
-This program computes the average of two numbers twice using different arguments. When this program gets evaluated in the data flow engine, the four arguments are added to the token queue, containing information about which execution context they belong to and what should happen with the result. 
+This program computes the average of two numbers twice using different arguments. When this program gets evaluated in the data flow engine, the four arguments and the 2s from the division by two are added to the token queue, containing information about which execution context they belong to and what should happen with the result. 
 In this example, the 2 and 6 belong to the same execution context, while 1 and 5 will belong to a different one. 
 
 \begin{figure}[h!]
 	\includegraphics[width=\textwidth]{images/Engine-Architecture-1.png}
-	\caption{The \textit{average} instruction gets invoked twice}
+	\caption{The corresponding data flow nodes for two calls to the \textit{average} function. Each color represents a different execution context.}
 	\label{fig:engine-architecture-1}
 \end{figure}
 
-In figure \ref{fig:engine-architecture-1} we see the arguments queued up against the \textit{average} instruction. Colors indicate the execution context, being positioned lower and more to the left indicates their position in the token queue. At this point, the token queue consists of 2, 6, 1 and 5, wrapped in meta data. 
+In figure \ref{fig:engine-architecture-1} we see the arguments queued up against the \textit{plus} instruction. Colors indicate the execution context. At this point, the token queue consists of 2, 6, 1, 5 and two 2s. These values are all wrapped in a token containing meta data, i.e. the tag. 
 
 \begin{figure}[h!]
 	\includegraphics[width=\textwidth]{images/Engine-Architecture-2.png}
-	\caption{The operands are forwarded to the \textit{plus} instruction}
+	\caption{The results of the \textit{plus} instruction are forwarded to the \textit{divide} instruction}
 	\label{fig:engine-architecture-2}
 \end{figure}
 
+Since all inputs are present for the first invocation, the \textit{plus} instruction gets invoked, as shown in figure \ref{fig:engine-architecture-2}. This adds a new token to the queue: 8. This result will serve as the input of the \textit{divide} instruction. 
+The next thing that happens in figure \ref{fig:engine-architecture-3} is the same step for 1 and 5.
+
 \begin{figure}[h!]
 	\includegraphics[width=\textwidth]{images/Engine-Architecture-3.png}
-	\caption{The next set of operands are also forwarded to the \textit{plus} instruction}
+	\caption{The second invocation of the \textit{plus} instruction finishes. All inputs are now present for the \textit{divide} instruction for both execution contexts.}
 	\label{fig:engine-architecture-3}
 \end{figure}
 
-Since all inputs are present for the first invocation, the \textit{average} instruction gets invoked, as shown in figure \ref{fig:engine-architecture-2}. This invokes the plus instruction, which adds two new tokens to the queue: 2 and 6.
-Because tokens are enqueued at the end, the next thing that happens in figure \ref{fig:engine-architecture-3} is the same step for 1 and 5. Note that tokens are processed one by one, which is not directly obvious from the diagrams. For brevity, the diagrams only show states when an instruction can be executed in the next loop.
-
 \begin{figure}[h!]
 	\includegraphics[width=\textwidth]{images/Engine-Architecture-4.png}
-	\caption{Results of the \textit{plus} instruction are passed on the \textit{quotient} instruction}
+	\caption{The first \textit{divide} instruction is invoked. Its result is put on the token queue again.}
 	\label{fig:engine-architecture-4}
 \end{figure} 
 
 \begin{figure}[h!]
 	\includegraphics[width=\textwidth]{images/Engine-Architecture-5.png}
-	\caption{Results of the second invocation of \textit{plus} are passed on the \textit{quotient} instruction}
+	\caption{The second \textit{divide} instruction is invoked. Its result is put on the token queue again.}
 	\label{fig:engine-architecture-5}
 \end{figure}
 
-When the \textit{plus} instruction has completed its work, it enqueues the result as a new token again, sending it along to the \textit{quotient} instruction. This is possible because of the information contained in the tokens: they know where to go next when instructions have completed. 
-In figure \ref{fig:engine-architecture-4} and \ref{fig:engine-architecture-5} we see this process happening for both execution contexts.
 Note that the tags are very important here, otherwise the engine would not be aware which inputs belong to the same invocation. There is no guarantee that tokens will always be enqueued in the correct order.
 
-\begin{figure}[h!]
-	\includegraphics[width=\textwidth]{images/Engine-Architecture-6.png}
-	\caption{These results are fed into the quotient operator}
-	\label{fig:engine-architecture-6}
-\end{figure}
+In the end, when the \textit{divide} instruction has also completed, its results are pushed into the token queue again, as shown by figure \ref{fig:engine-architecture-4} and \ref{fig:engine-architecture-5}. This allows further processing of the data, but is outside the scope of this example. 
 
-\begin{figure}[h!]
-	\includegraphics[width=\textwidth]{images/Engine-Architecture-7.png}
-	\caption{The second set of results are fed into the quotient operator}
-	\label{fig:engine-architecture-7}
-\end{figure}
-
-In the end, when the \textit{quotient} instruction has also completed, its results are pushed into the token queue again, as shown by figure \ref{fig:engine-architecture-6} and \ref{fig:engine-architecture-7}. This allows further processing of the data, but is outside the scope of this example. 
-
-To summarize, the general algorithm of the dataflow engine is to process tokens in the queue (FIFO), execute instructions whenever an execution context has all the necessary arguments present and re-enqueue the results of those instructions. Separate invocations are distinguished using tags that denote the execution context.
+To summarize, the dataflow engine processes tokens in the queue, invokes instructions whenever all of its inputs in one execution context are present and re-enqueues the results of those invocations. Separate function calls are distinguished using tags that denote the execution context.
 
 \section{Mapping of reactive signals to dataflow engine}
 
@@ -125,7 +111,7 @@ Taking our example from the Language chapter, we have the following reactive pro
 	\label{fig:engine-mapping-1}
 \end{figure}
 
-This program behaves exactly the same as the reactive version, the only difference being that is now running atop a dataflow engine.
+This program behaves exactly the same as the reactive version, the only difference being that it is now running atop a dataflow engine.
 
 \subsection{Problems encountered}
 
@@ -136,18 +122,17 @@ This program behaves exactly the same as the reactive version, the only differen
 In reactive programs, signals with a dependency to two or more parent signals are updated whenever at least one of their parents emits a new value. This boils down to the signal functioning as a mapping of the latest values of its parents. Taking our example, this means that when the current temperature changes, the billboard will update immediately, even if the current date has not changed at all.
 Similarly, the billboard label updates when the date changes, even if the temperature has not emitted a new value.
 
-In the dataflow engine, an instruction that gets executed consumes its tokens. This is problematic, because when the current temperature emits a new value, it now produces a new token on the queue. 
-The billboard label node receives this token, but will keep waiting until the current date produces another token as well. This means that a signal does not update until ALL of its parents have emitted new values.
-This was the biggest mismatch between reactive programming and the data flow model, and a perfect solution was not found.
+In the dataflow engine, an instruction that gets invoked consumes its tokens. This is problematic, because when the current temperature emits a new value, it produces a new token. 
+The dataflow engine will assign this token to the billboard label node, but will keep waiting until the current date produces another token as well before invoking the billboard label again. This means that a signal which is now mapped as a dataflow node does not update until ALL of its parents have emitted new values. This was the biggest mismatch between reactive programming and the data flow model.
 
 \paragraph{Solution description}
 
 To simulate the same behavior as reactive signals in the data flow model, we had to figure out a way to retrieve the latest values of other parent signals when a new token arrives. 
-Although each signal has references to all of its parents, it was not advisable to just read out the latest values and generate extra tokens for the other parents as well. 
-This would break our potential for parallelism, because it should be presumed that these dataflow nodes live on and get executed in separate processes and even machines.
-The whole premise of the data flow model is that nodes cannot be allowed to access outside state apart from the incoming arguments from the tokens.
+Although each signal has references to all of its parents, it was not advisable to just read out the latest values and generate extra tokens for the other parents as well. This is because a strict requirement of the dataflow model is that nodes must be processed in isolation and cannot access shared state. 
+This would break our potential for parallelism, because it should be presumed that these dataflow nodes live in and are invoked on separate processes and even machines.
+The whole premise of the data flow model is that nodes are only allowed to access the incoming data from the tokens (and the execution context).
 
-The only option that remained was therefore to simulate new signal emissions for all the source signals (signals without parents that get updated by the runtime outside the update loop) whenever one of the source signals emits. Since there is no language support for filtering, throttling or dynamically manipulating the flow of data through the graph, it can be safely assumed that emitting new values from the source signals will ripple through the entire graph, causing all nodes to be updated in the same order. In practice, this meant that whenever a new temperature is sent out, the current second also pushes a value out at the same time. This means the necessary tokens are put on the queue at the same time, simulating the behavior we originally wanted: whenever one parent emits, the other parents do too.
+The best option that remained was therefore to simulate new signal emissions for all the source signals (signals without parents that get updated by the runtime outside the update loop) whenever one of the source signals emits. Since there is no language support for filtering, throttling or dynamically manipulating the flow of data through the graph, it can be safely assumed that emitting new values from the source signals will ripple through the entire graph, causing all nodes to be updated in the same order. In practice, this meant that whenever a new temperature is sent out, the current seconds also pushes a value out at the same time. The necessary tokens are put on the queue at the same time, simulating the behavior we originally wanted: whenever one parent emits, the other parents do too.
 
 \subsubsection{The evaluation of all instructions in the data flow model}
 
