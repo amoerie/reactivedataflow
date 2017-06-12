@@ -384,6 +384,7 @@
         (list '/ /)
         (list 'string-append string-append)
         (list 'number->string number->string)
+        (list 'current-milliseconds current-milliseconds)
         (list 'display display)
         (list 'newline newline)
         (list 'even? even?)
@@ -524,10 +525,10 @@
 ;; $current-seconds
 ;; : emits the current seconds since 1st January 1970, every second
 ;;
-(define $current-seconds (make-signal '() current-seconds))
+(define $current-seconds (make-signal '() current-milliseconds))
 (define (current-seconds-loop)
   (signal-up-to-date! $current-seconds #f)
-  (sleep 0.5)
+  (sleep 0.1)
   (current-seconds-loop))
 
 ;;
@@ -537,7 +538,7 @@
 (define $random-integer (make-signal '() (lambda () (random 1 100))))
 (define (random-integer-loop)
   (signal-up-to-date! $random-integer #f)
-  (sleep (random 1 10))
+  (sleep 0.01)
   (random-integer-loop))
 
 ;; ==============================================
@@ -555,7 +556,7 @@
 (define (update-signals-loop)
   (define signals (get-topologically-sorted-signals))
   (for-each signal-update! (filter (compose not signal-up-to-date?) signals))
-  (sleep 0.05)
+  (sleep 0.01)
   (update-signals-loop))
 
 ;; ==============================================
@@ -610,14 +611,14 @@
 
 ;; CASE 1: Linear signal
 (define (create-linear-signals number-of-signals)
-  (eval '(define (plus1 name)
-           (lambda (value) (display (string-append name " : " (number->string (+ value 1)))) (newline) (+ value 1)))
+  (eval '(define (returnsame name)
+           (lambda (value) value))
         the-global-environment)
-  (eval '(define linear-signal-0 (lift (plus1 "linear-signal-0") $current-seconds)) the-global-environment)
+  (eval '(define linear-signal-0 (lift (returnsame "linear-signal-0") $current-seconds)) the-global-environment)
 
   (define (apply-template new-signal-name previous-signal-name)
     ;; (define linear-signal-3 (lift (plus1 "linear-signal-3") linear-signal-2))
-    (quasiquote (define (unquote new-signal-name) (lift (plus1 (unquote (symbol->string new-signal-name))) (unquote previous-signal-name)))))
+    (quasiquote (define (unquote new-signal-name) (lift (returnsame (unquote (symbol->string new-signal-name))) (unquote previous-signal-name)))))
 
   (define (get-linear-signal-name number)
     (string->symbol (string-append "linear-signal-" (number->string number))))
@@ -635,16 +636,23 @@
         (create-linear-signal-loop (+ n 1)))
       #t))
   
-  (create-linear-signal-loop 1))
+  (create-linear-signal-loop 1)
+  (eval '(lift (lambda (value) (newline) (display (string-append (number->string (current-milliseconds)) ";" (number->string value))) value) linear-signal-99) the-global-environment)
+)
 
-(create-linear-signals 20)
+(define ignore (create-linear-signals 100))
 
 ;; keep built in signals up to date in separate threads
-(display "Booting current-seconds loop")
-(thread current-seconds-loop)
-(display "Booting random-integer loop")
+(display "Booting current-seconds loop") (newline)
+(define currentsecondsthread (thread current-seconds-loop))
+(display "Booting random-integer loop") (newline)
 ;;(thread random-integer-loop)
-(display "Booting update-signals loop")
-(thread update-signals-loop)
+(display "Booting update-signals loop") (newline)
+(define updatethread (thread update-signals-loop))
 (display "Booting driver loop")
-(driver-loop)
+;;(driver-loop)
+(display "Going to sleep for 60 seconds") (newline)
+(sleep 60)
+(display "Alright playtime's over, killing threads") (newline)
+(kill-thread currentsecondsthread)
+(kill-thread updatethread)
