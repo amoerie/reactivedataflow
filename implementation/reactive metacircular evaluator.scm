@@ -609,38 +609,41 @@
 ;;             PERFORMANCE
 ;; ====================================
 
-;; CASE 1: Linear signal
-(define (create-linear-signals number-of-signals)
+;; CASE 1: Fan out signal
+(define (create-fanout-signals number-of-signals)
   (eval '(define (returnsame name)
            (lambda (value) value))
         the-global-environment)
-  (eval '(define linear-signal-0 (lift (returnsame "linear-signal-0") $current-seconds)) the-global-environment)
+  (eval '(define fanout-signal-0 (lift (returnsame "fanout-signal-0") $current-seconds)) the-global-environment)
 
   (define (apply-template new-signal-name previous-signal-name)
-    ;; (define linear-signal-3 (lift (plus1 "linear-signal-3") linear-signal-2))
+    ;; (define fanout-signal-3 (lift (plus1 "fanout-signal-3") fanout-signal-2))
     (quasiquote (define (unquote new-signal-name) (lift (returnsame (unquote (symbol->string new-signal-name))) (unquote previous-signal-name)))))
 
-  (define (get-linear-signal-name number)
-    (string->symbol (string-append "linear-signal-" (number->string number))))
+  (define (get-fanout-signal-name number)
+    (string->symbol (string-append "fanout-signal-" (number->string number))))
   
-  (define (create-linear-signal current-number)
-    (define current-signal-name (get-linear-signal-name current-number))
-    (define previous-signal-name (get-linear-signal-name (- current-number 1)))
-    (define expression (apply-template current-signal-name previous-signal-name))
+  (define (create-fanout-signal current-number)
+    (define current-signal-name (get-fanout-signal-name current-number))
+    (define expression (apply-template current-signal-name 'fanout-signal-0))
     (eval expression the-global-environment))
                             
-  (define (create-linear-signal-loop n)
+  (define (create-fanout-signal-loop n)
     (if (< n number-of-signals)
       (begin
-        (create-linear-signal n)
-        (create-linear-signal-loop (+ n 1)))
+        (create-fanout-signal n)
+        (create-fanout-signal-loop (+ n 1)))
       #t))
   
-  (create-linear-signal-loop 1)
-  (eval '(lift (lambda (value) (newline) (display (string-append (number->string (current-milliseconds)) ";" (number->string value))) value) linear-signal-99) the-global-environment)
+  (create-fanout-signal-loop 1)
+  (eval '(lift (lambda (v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15 v16 v17 v18 v19 v20 v21 v22 v23 v24 v25 v26 v27 v28 v29 v30 v31 v32 v33 v34 v35 v36 v37 v38 v39 v40 v41 v42 v43 v44 v45 v46 v47 v48 v49 v50 v51 v52 v53 v54 v55 v56 v57 v58 v59 v60 v61 v62 v63 v64 v65 v66 v67 v68 v69 v70 v71 v72 v73 v74 v75 v76 v77 v78 v79 v80 v81 v82 v83 v84 v85 v86 v87 v88 v89 v90 v91 v92 v93 v94 v95 v96 v97 v98 v99)
+                 (newline) (display (string-append (number->string (current-milliseconds)) ";" (number->string v99))) value) 
+               fanout-signal-0 fanout-signal-1 fanout-signal-2 fanout-signal-3 fanout-signal-4 fanout-signal-5 fanout-signal-6 fanout-signal-7 fanout-signal-8 fanout-signal-9 fanout-signal-10 fanout-signal-11 fanout-signal-12 fanout-signal-13 fanout-signal-14 fanout-signal-15 fanout-signal-16 fanout-signal-17 fanout-signal-18 fanout-signal-19 fanout-signal-20 fanout-signal-21 fanout-signal-22 fanout-signal-23 fanout-signal-24 fanout-signal-25 fanout-signal-26 fanout-signal-27 fanout-signal-28 fanout-signal-29 fanout-signal-30 fanout-signal-31 fanout-signal-32 fanout-signal-33 fanout-signal-34 fanout-signal-35 fanout-signal-36 fanout-signal-37 fanout-signal-38 fanout-signal-39 fanout-signal-40 fanout-signal-41 fanout-signal-42 fanout-signal-43 fanout-signal-44 fanout-signal-45 fanout-signal-46 fanout-signal-47 fanout-signal-48 fanout-signal-49 fanout-signal-50 fanout-signal-51 fanout-signal-52 fanout-signal-53 fanout-signal-54 fanout-signal-55 fanout-signal-56 fanout-signal-57 fanout-signal-58 fanout-signal-59 fanout-signal-60 fanout-signal-61 fanout-signal-62 fanout-signal-63 fanout-signal-64 fanout-signal-65 fanout-signal-66 fanout-signal-67 fanout-signal-68 fanout-signal-69 fanout-signal-70 fanout-signal-71 fanout-signal-72 fanout-signal-73 fanout-signal-74 fanout-signal-75 fanout-signal-76 fanout-signal-77 fanout-signal-78 fanout-signal-79 fanout-signal-80 fanout-signal-81 fanout-signal-82 fanout-signal-83 fanout-signal-84 fanout-signal-85 fanout-signal-86 fanout-signal-87 fanout-signal-88 fanout-signal-89 fanout-signal-90 fanout-signal-91 fanout-signal-92 fanout-signal-93 fanout-signal-94 fanout-signal-95 fanout-signal-96 fanout-signal-97 fanout-signal-98 fanout-signal-99
+         )
+        the-global-environment)
 )
 
-(define ignore (create-linear-signals 100))
+(define ignore (create-fanout-signals 100))
 
 ;; keep built in signals up to date in separate threads
 (display "Booting current-seconds loop") (newline)
