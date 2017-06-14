@@ -8,7 +8,7 @@ This research builds on two existing paradigms in software development: reactive
 
 \section{Reactive Programming}
 
-Reactive Programming is a software development paradigm focused on reactions, i.e. the handling of external events, user interactions, etc.  In this paradigm, the application state is derived from the previous state and any events that may occur, for example user interactions or current environmental factors. This deviates from more traditional approaches, where values and state can be written at any point and for any reason. In a reactive program however, the flow of dependencies is recorded as a (possibly cyclic!) directed graph, making the derivation of the application state very explicit.
+Reactive Programming is a programming paradigm allowing the declarative specification of event-driven code. It allows programmers to combine and derive events from a set of event sources (e.g. user interactions, etc.). This deviates from the traditional callback-based approach where events are dealt with using the observer pattern. In a reactive program however, the flow of dependencies is recorded as a (possibly cyclic!) directed graph, making the derivation of the application state very explicit.
 At the core of reactive programming are the following main concepts:
 \begin{itemize}
 	\item The first-class reification of events (making events a first-class citizen)
@@ -20,7 +20,7 @@ A number of implementations exist for reactive programming, in this thesis we wi
 
 \subsection{Example}
 
-The canonical metaphor for Reactive Programming is spreadsheets, which typically track changes across input cells and automatically recompute values in other cells if the formulas they contain reference the aforementioned input cells. In essence, cells react to modifications made in other cells if their formulas depend on them. These cells are what we call \textit{observables} or \textit{signals} in Reactive Programming.
+The canonical metaphor for Reactive Programming is spreadsheets, which automatically recompute the value of a cell if one of the cells on which it depends changes. In essence, cells react to modifications made in other cells if their formulas depend on them. These cells are what we call \textit{observables} or \textit{signals} in Reactive Programming.
 Imagine a simple program in an imperative programming setting, as shown in listing \ref{lst:background-reactive-example}.
 
 \begin{lstlisting}[caption={A basic reactive program},captionpos=b,label={lst:background-reactive-example}]
@@ -30,23 +30,23 @@ Imagine a simple program in an imperative programming setting, as shown in listi
 When this statement is executed, it assigns the result of adding b and c to the variable a, mutating a in the current scope. Note that this only happens once. A snapshot is taken of the current value of b and c, to determine the new value of variable a. Of course, this assumes that the variable b and c are provided to the program.
 
 \begin{figure}[h]
-	\centering{\includegraphics[width=\textwidth]{images/background-reactive-example.png}}
+	\centering{\includegraphics[width=8cm]{images/background-reactive-example.png}}
 	\caption{Graph of signals}
 	\label{fig:background-reactive-example}
 \end{figure}
 
-In a reactive programming setting, a would subscribe to the values of b and c, essentially asking to be notified whenever the variables b or c change, at which point the value of variable a changes. See figure \ref{fig:background-reactive-example} for the reactive graph. This process repeats every time the variables b or c are modified. Note that the value of a is undetermined until both b and c produce a value. 
+In a reactive programming setting, a would subscribe to the values of b and c, essentially asking to be notified whenever the variables b or c change, at which point the value of variable a changes. The language runtime keeps track of the flow of data by constructing a dependency graph where the nodes are signals and the operations create edges between the nodes. See figure \ref{fig:background-reactive-example} for the reactive graph of the sample code in listing \ref{lst:background-reactive-example}. While the application is running, the runtime will traverse this graph every time a source node emits a new value, rippling the effect of that change across the graph.  In our example, this process repeats every time the variables b or c are modified. Note that the value of a is undetermined until both b and c produce a value. 
 
 The implementation of this reactive mechanism can be provided by the language itself or by a framework or library. 
 
 \subsection{Advantages of Reactive Programming}
 
-A signal can be described as "values over time", in contrast with a variable which only holds its latest value, revealing no information about the time that value was provided or what changed it. 
-Signals can be used to model almost any concept in software development:
+Signals can be described as "values over time", in contrast with a variable which only holds its latest value, revealing no information about the time when that last value was produced or what caused the variable to be assigned a new value to begin with. 
+Signals can be used to model time-varying values, typically found in event-driven applications:
 \begin{itemize}
 	\item mouse movements as a signal which emits the current position in real time
 	\item click events as a signal which emits event objects
-	\item the results of a database query as a signal which emits only one value
+	\item the results of a database query
     \item an infinite sequence as a signal which never stops emitting
 \end{itemize}
 
@@ -62,23 +62,6 @@ The dataflow model \citep{johnston_advances_2004} is a paradigm focused on the p
 The execution of a program in the dataflow model can be represented as a direct graph of nodes where each node represents an instruction and each edge is data traveling between instructions. It is up to the dataflow engine to orchestrate inputs so that instructions are invoked when all of the input data is present. Whenever an instruction is invoked, the output is sent through to all connected instructions which depend on it.
 
 \newpage
-\subsection{Tagged Token DataFlow}
-
-The dataflow model has different possible implementations, in this dissertation we solely focus on \textit{tagged token dataflow} \citep{arvind_executing_1990}.
-In this version, instruction arguments, i.e. tokens, are tagged with meta data. A token consists of the following parts, as shown in figure \ref{fig:background-dataflow-token}:
-
-\begin{figure}[ht]
-	\centerline{\includegraphics[width=\textwidth]{images/background-dataflow-token.png}}
-	\caption{A tagged token}
-	\label{fig:background-dataflow-token}
-\end{figure}
-
-\begin{description}[style=nextline]
-	\item[The value] Also called the datum, in this example "abc"
-	\item[The instruction address] Uniquely identifies the instruction to be invoked
-	\item[The port] Uniquely identifies the position of the token, should an instruction need multiple tokens for a single invocation.
-	\item[The execution context] This uniquely identifies a function call, and is meant to distinguish instruction invocations of different function calls. This essentially allows the graph to be made reentrant. 
-\end{description}
 
 \subsection{Example}
 
@@ -93,7 +76,7 @@ This assumes that the variable b and c are provided to the program.
 In a traditional execution, the variable a would be set to the sum of b and c and the variable d would be set to the sum of a and b. Note that the sequence in which these operations are executed is of vital importance: switching the two statements would result in different values for the variable d!
 
 \begin{figure}[ht]
-    \centerline{\includegraphics[width=\textwidth]{images/background-dataflow-example.png}}
+	\centerline{\includegraphics[width=\textwidth]{images/background-dataflow-example.png}}
 	\caption{Graph of instructions}
 	\label{fig:background-dataflow-example}
 \end{figure}
@@ -101,6 +84,26 @@ In a traditional execution, the variable a would be set to the sum of b and c an
 In a dataflow engine, these instructions are registered as nodes in the dependency graph, as visualized by figure \ref{fig:background-dataflow-example}. What really happens is that the values of b and c are added as tokens to the processing pipeline at application startup. The value of b is added as a token twice; once for the "+" instruction which computes the value of a and once for the "+" instruction which computes the value of d. When the dataflow engine spins up and starts processing data, it sends the tokens for b and c to the first "+" instruction, which is triggered because all of its inputs are present. This produces a value for a, which gets added as a token to the processing pipeline again as the first operand for the second "+" instruction. This instruction now also has all of its inputs present, which allows it to compute the value for variable d at this point.
 
 If at any point in the future, b or c (which should be seen as the output of other instructions not shown in the sample code) produce new values, these would be enqueued again in the pipeline for further processing.
+
+\subsection{Tagged Token DataFlow}
+
+The dataflow model has different possible implementations, in this dissertation we solely focus on \textit{tagged token dataflow} \citep{arvind_executing_1990}.
+In this version, instruction arguments, i.e. tokens, are tagged with meta data to provide the engine with the necessary information to orchestrate the data flows and also to provide the possibility of making the graph reentrant by using execution contexts. A token consists of the following parts, as shown in figure \ref{fig:background-dataflow-token}:
+
+\begin{figure}[ht]
+	\centerline{\includegraphics[width=\textwidth]{images/background-dataflow-token.png}}
+	\caption{A tagged token}
+	\label{fig:background-dataflow-token}
+\end{figure}
+
+\begin{description}[style=nextline]
+	\item[The value] Also called the datum, in this example "abc". This is the required data to invoke the instruction.
+	\item[The instruction address] Uniquely identifies the instruction to be invoked
+	\item[The port] Uniquely identifies the position of the token, should an instruction need multiple tokens for a single invocation. For example an instruction with two inputs would require two tokens be present to invoke the instruction: one token with port 0 and one with port 1. 
+	\item[The execution context] This allows an arbitrary part of the instruction graph to be made reentrant. For example, it can uniquely identify a function call and distinguish instruction invocations from different function calls.
+\end{description}
+
+
 
 \subsection{Advantages}
 
