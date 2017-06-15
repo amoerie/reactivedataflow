@@ -1,4 +1,19 @@
-#lang racket/base
+#lang racket
+
+(require racket/date)
+(require "runtime.rkt")
+(include "runtime.rkt")
+; Instruction types
+; -----------------
+(define operation make-op)
+(define switch make-sw)
+
+;; utility functions
+;; Returns the first index of an element in a list or -1 if it is not found
+(define (index-of xs x)
+    (cond ((null? xs) -1)
+          ((eq? (car xs) x) 0)
+          (else (+ 1 (index-of (cdr xs) x)))))
 
 ;;
 ;;toegevoegd
@@ -37,7 +52,7 @@
          (eval-lift (lift-operator exp) (lift-signals exp) env))
         ((application? exp)
          (apply-in-scope (eval (operator exp) env)
-                (list-of-values (operands exp) env)))
+                         (list-of-values (operands exp) env)))
 
         (else
          (error "Unknown expression type -- EVAL" exp))))
@@ -48,13 +63,13 @@
 (define (apply-in-scope procedure arguments)
   (cond ((primitive-procedure? procedure)
          (apply-primitive-procedure procedure arguments))
-        ((compound-procedure? procedure)
+        ((native-procedure? procedure)
          (eval-sequence
-           (procedure-body procedure)
-           (extend-environment
-             (procedure-parameters procedure)
-             arguments
-             (procedure-environment procedure))))
+          (native-procedure-body procedure)
+          (extend-environment
+           (native-procedure-parameters procedure)
+           arguments
+           (native-procedure-environment procedure))))
         (else
          (error
           "Unknown procedure type -- APPLY" procedure))))
@@ -82,8 +97,8 @@
 ;;
 (define (eval-definition exp env)
   (define-variable! (definition-variable exp)
-                    (eval (definition-value exp) env)
-                    env)
+    (eval (definition-value exp) env)
+    env)
   'ok)
 
 ;;
@@ -259,16 +274,35 @@
 ;; see p. 27
 ;;
 (define (make-procedure parameters body env)
-  (list 'procedure parameters body env))
+  (define native-procedure (list 'nativeprocedure parameters body env))
+  ;; return a set of dataflow instructions which, when executed, will return the proper value
+;;  (define dataflow-procedure (instructions
+;;   ;; operation with index 0 : lambda that executes the procedure in our environment
+;;   (operation (length parameters)
+;;              (lambda args (list (apply-in-scope native-procedure args)))
+;;              (ports (port (link 1 0)))
+;;              )
+;;  ;; operation with index 1 : lambda that displays and returns an empty result result
+;;   (operation 1 (lambda (x) (display x) (newline) (list)) (ports))
+;;   (ret 1)
+;;  )
+;; )
+  ;; how to extract the return value here? 
+;;  (define execution
+;;    (lambda arguments
+;;      (let (program-arguments (append (list dataflow-procedure 0) arguments))
+;;        (
+;;  (list 'dataflowprocedure lambda))
+  native-procedure)
 
-(define (compound-procedure? p)
-  (tagged-list? p 'procedure))
+(define (native-procedure? p)
+  (tagged-list? p 'nativeprocedure))
 
-(define (procedure-parameters p) (cadr p))
+(define (native-procedure-parameters p) (cadr p))
 
-(define (procedure-body p) (caddr p))
+(define (native-procedure-body p) (caddr p))
 
-(define (procedure-environment p) (cadddr p))
+(define (native-procedure-environment p) (cadddr p))
 
 ;;
 ;; see p. 29
@@ -361,8 +395,8 @@
                              the-empty-environment)))
     (define-variable! 'true true initial-env)
     (define-variable! 'false false initial-env)
-    (define-variable! '$current-seconds (make-signal-wrapper $current-seconds) initial-env)
-    (define-variable! '$random-integer (make-signal-wrapper $random-integer) initial-env)
+    (define-variable! 'current-unix-timestamp (make-signal-wrapper current-unix-timestamp) initial-env)
+    (define-variable! 'current-temp-fahrenheit (make-signal-wrapper current-temp-fahrenheit) initial-env)
     initial-env))
 
 ;;
@@ -382,14 +416,14 @@
         (list '* *)
         (list '- -)
         (list '/ /)
+        (list 'quotient quotient)
+        (list 'even? even?)
+        (list 'seconds->date seconds->date)
+        (list 'date->string date->string)
         (list 'string-append string-append)
         (list 'number->string number->string)
-        (list 'current-milliseconds current-milliseconds)
-        (list 'display display)
-        (list 'newline newline)
-        (list 'even? even?)
         (list 'value (lambda (exp) (signal-value (signal-wrapper-unwrap exp))))
-;;      more primitives
+        ;;      more primitives
         ))
 
 (define (primitive-procedure-names)
@@ -418,19 +452,19 @@
 (define (eval-tab expr env)
   (let ((size (tab-size expr))
         (generator (eval (tab-generator expr) env)))
-       (define (fill-vector-loop v i)
-         (if (< i size)
-             (begin 
-               (vector-set! v i (generator))
-               (fill-vector-loop v (+ i 1)))
-             v))
+    (define (fill-vector-loop v i)
+      (if (< i size)
+          (begin 
+            (vector-set! v i (generator))
+            (fill-vector-loop v (+ i 1)))
+          v))
     (fill-vector-loop (make-vector size) 0)))
   
 ;; ==============================================
 ;; Signal-wrappers: used to flag signals in the environment
 ;; ==============================================
-(define (make-signal-wrapper $signal)
-  (cons 'signal $signal))
+(define (make-signal-wrapper signal)
+  (cons 'signal signal))
 
 (define (signal-wrapper? exp)
   (tagged-list? exp 'signal))
@@ -450,7 +484,6 @@
 ;; Object structure: [
 ;;                    value          : any,         
 ;;                    has-value?     : boolean
-;;                    up-to-date?    : boolean,
 ;;                    parents        : [signal],
 ;;                    value-provider : val1, val2, ... => value,
 ;;                    children       : [signal]
@@ -458,123 +491,362 @@
 ;; The value-provider parameter is a function that takes the value from each parent signal and returns the new value for this derived signal
 ;;
 (define (make-signal parents value-provider)
-  (define $signal (list->vector (list null #f #f parents value-provider '())))
-  (for-each (lambda ($parent) (signal-add-child! $parent $signal)) parents)
-  $signal)
+  (define signal (list->vector (list null #f parents value-provider '())))
+  (for-each (lambda (parent) (signal-add-child! parent signal)) parents)
+  signal)
 
-(define (signal-value $signal)
-  (if (signal-has-value? $signal)
-      (vector-ref $signal 0)
+(define (signal-value signal)
+  (if (signal-has-value? signal)
+      (vector-ref signal 0)
       (raise "Cannot access the value of this signal, it does not have one (yet)")))
 
-(define (signal-value! $signal value)
-  (vector-set! $signal 0 value)
-  (signal-has-value! $signal #t))
+(define (signal-value! signal value)
+  (vector-set! signal 0 value)
+  (signal-has-value! signal #t))
 
-(define (signal-has-value? $signal)
-  (vector-ref $signal 1))
+(define (signal-has-value? signal)
+  (vector-ref signal 1))
 
-(define (signal-has-value! $signal has-value)
-  (vector-set! $signal 1 has-value))
+(define (signal-has-value! signal has-value)
+  (vector-set! signal 1 has-value))
 
-(define (signal-up-to-date? $signal)
-   (vector-ref $signal 2))
+(define (signal-parents signal)
+  (vector-ref signal 2))
 
-(define (signal-up-to-date! $signal up-to-date)
-  (vector-set! $signal 2 up-to-date))
+(define (signal-value-provider signal)
+  (vector-ref signal 3))
 
-(define (signal-parents $signal)
-  (vector-ref $signal 3))
+(define (signal-children signal)
+  (vector-ref signal 4))
 
-(define (signal-value-provider $signal)
-  (vector-ref $signal 4))
+(define (signal-children! signal children)
+  (vector-set! signal 4 children))
 
-(define (signal-children $signal)
-  (vector-ref $signal 5))
-
-(define (signal-children! $signal children)
-  (vector-set! $signal 5 children))
-
-(define (signal-add-child! $signal $child)
-  (signal-children! $signal (cons $child (signal-children $signal))))
-
-;;
-;; Recomputes the value of the provided signal, provided all parents have values
-;; When the value is set, it flags the signal as being up to date
-;; and flags every child as being NOT up to date
-;;
-(define (signal-update! $signal)
-  (define parents (signal-parents $signal))
-  (define children (signal-children $signal))
-  (define parents-have-values (map signal-has-value? parents))
-  (define all-parents-have-values? (foldl and-2 #t parents-have-values))
-  (if all-parents-have-values?
-      (let ((value-provider (signal-value-provider $signal))
-            (parent-values (map signal-value parents)))
-           (signal-value! $signal (apply value-provider parent-values))
-           (signal-up-to-date! $signal #t)
-           (for-each (lambda ($child) (signal-up-to-date! $child #f)) children))
-      #f))
-      
+(define (signal-add-child! signal child)
+  (signal-children! signal (cons child (signal-children signal))))   
 
 ;; ==============================================
 ;; Built in signals
 ;; ==============================================
 
 ;;
-;; $current-seconds
+;; current-unix-timestamp
 ;; : emits the current seconds since 1st January 1970, every second
 ;;
-(define $current-seconds (make-signal '() current-milliseconds))
-(define (current-seconds-loop)
-  (signal-up-to-date! $current-seconds #f)
-  (sleep 0.000001)
-  (current-seconds-loop))
+(define current-unix-timestamp (make-signal '() '(lambda (x) (res x))))
+(define (current-unix-timestamp-loop callback)
+  (define index (get-signal-operation-index current-unix-timestamp))
+  (let loop ()
+    (define new-value (current-milliseconds))
+    (signal-value! current-unix-timestamp new-value)
+    (callback)
+    (sleep 0.0000001)
+    (loop)))
 
 ;;
-;; $random
+;; current-temp-fahrenheit
 ;; : emits a random number between 1 and 100, every (random 1 .. 10 seconds)
 ;;
-(define $random-integer (make-signal '() (lambda () (random 1 100))))
-(define (random-integer-loop)
-  (signal-up-to-date! $random-integer #f)
-  (sleep 0.01)
-  (random-integer-loop))
+(define current-temp-fahrenheit (make-signal '() '(lambda (x) (res x))))
+(define (current-temp-fahrenheit-loop callback)
+  (define index (get-signal-operation-index current-temp-fahrenheit))
+  (let loop ()
+    (sleep (random 1 10))
+    (define new-value (random 1 100))
+    (signal-value! current-temp-fahrenheit new-value)
+    (callback)
+    (loop)))
 
 ;; ==============================================
 ;; Signal graph + update loop
 ;; ==============================================
-(define source-signals (list $current-seconds $random-integer))
+(define source-signals (list current-unix-timestamp))
 
 (define (get-topologically-sorted-signals)
   (define (topological-sort accumulator next-children)
     (if (null? next-children)
         accumulator
-        (topological-sort (append accumulator next-children) (foldl append '() (map signal-children next-children)))))
+        (topological-sort (append accumulator (filter (lambda (child) (not (member child accumulator))) next-children))
+                          (foldl append '() (map signal-children next-children)))))
   (topological-sort '() source-signals))
-
-(define (update-signals-loop)
-  (define signals (get-topologically-sorted-signals))
-  (for-each signal-update! (filter (compose not signal-up-to-date?) signals))
-  (sleep 0.0000001)
-  (update-signals-loop))
 
 ;; ==============================================
 ;; Lifting
 ;; One or more signals can be lifted with a procedure to create a new signal
-;; Syntax: (lift (lambda (value1 value2 ...) ( ... )) $signal1 $signal2 ...)
+;; Syntax: (lift (lambda (value1 value2 ...) ( ... )) signal1 signal2 ...)
 ;; ==============================================
 (define (lift? exp) (tagged-list? exp 'lift))
 (define (lift-operator exp) (cadr exp))
 (define (lift-signals exp) (cddr exp))
 
 (define (eval-lift operator-exp signal-exps env)
-  (define operator (eval operator-exp env))
   (define wrapped-parents (map (lambda (signal-exp) (eval signal-exp env)) signal-exps))
-  (define parents (map signal-wrapper-unwrap wrapped-parents)) 
-  (define value-provider (lambda parent-values (apply-in-scope operator parent-values)))
-  (make-signal-wrapper (make-signal parents value-provider)))
+  (define parents (map signal-wrapper-unwrap wrapped-parents))
+  (make-signal-wrapper (make-signal parents operator-exp)))
   
+(define (print-input input)
+  (newline)
+  (display input))
+
+(define (print-output output)
+  (newline)
+  (if (native-procedure? output)
+      (display (list 'native-procedure
+                     (native-procedure-parameters output)
+                     (native-procedure-body output)
+                     '<native-procedure-env>))
+      (display output))
+  (newline))
+
+(define (print-result result)
+  (print-input (car result))
+  (print-output (cdr result)))
+
+(define the-global-environment (setup-environment))
+
+(define (evaluate input)
+  (define output (eval input the-global-environment))
+  output)
+  ;;(define result (cons input output)))
+  ;;(print-result result))
+
+;; ====================================
+;;        INITIAL PROGRAM INPUTS
+;;
+;; This evaluates any instructions before setting up the signals in the dataflow system
+;; After these initial inputs, no new signals can be added 
+;; ====================================
+
+(define program-inputs
+  (list
+   ;;'(define x 18)
+   ;;'x
+   ;;'(define (test a b c) (+ a b c))
+   ;;'(test 1 2 3)
+   ;;'(define (fahrenheit->celsius fahrenheit)
+   ;;  (quotient (* (- fahrenheit 32) 5) 9))
+   ;;'(define current-temp-celsius
+   ;;   (lift fahrenheit->celsius current-temp-fahrenheit))
+   ;;'(define current-date
+   ;;   (lift seconds->date current-unix-timestamp))
+   ;;'(define billboard-label
+   ;;    (lift
+   ;;     (lambda (temperature date)
+   ;;       (string-append "Temperature: " (number->string temperature) "C°, Date: " (date->string date)))
+   ;;     current-temp-celsius
+   ;;     current-date))   
+     '(define x 10)
+     '(define linear-signal-0 (lift (lambda (x) (res x)) current-unix-timestamp))
+     '(define linear-signal-1 (lift (lambda (x) (res x)) linear-signal-0)) 
+     '(define linear-signal-2 (lift (lambda (x) (res x)) linear-signal-1))  
+     '(define linear-signal-3 (lift (lambda (x) (res x)) linear-signal-2))  
+     '(define linear-signal-4 (lift (lambda (x) (res x)) linear-signal-3))  
+     '(define linear-signal-5 (lift (lambda (x) (res x)) linear-signal-4))  
+     '(define linear-signal-6 (lift (lambda (x) (res x)) linear-signal-5))  
+     '(define linear-signal-7 (lift (lambda (x) (res x)) linear-signal-6))  
+     '(define linear-signal-8 (lift (lambda (x) (res x)) linear-signal-7))  
+     '(define linear-signal-9 (lift (lambda (x) (res x)) linear-signal-8))  
+     '(define linear-signal-10 (lift (lambda (x) (res x)) linear-signal-9)) 
+     '(define linear-signal-11 (lift (lambda (x) (res x)) linear-signal-10))
+     '(define linear-signal-12 (lift (lambda (x) (res x)) linear-signal-11))
+     '(define linear-signal-13 (lift (lambda (x) (res x)) linear-signal-12))
+     '(define linear-signal-14 (lift (lambda (x) (res x)) linear-signal-13))
+     '(define linear-signal-15 (lift (lambda (x) (res x)) linear-signal-14))
+     '(define linear-signal-16 (lift (lambda (x) (res x)) linear-signal-15))
+     '(define linear-signal-17 (lift (lambda (x) (res x)) linear-signal-16))
+     '(define linear-signal-18 (lift (lambda (x) (res x)) linear-signal-17))
+     '(define linear-signal-19 (lift (lambda (x) (res x)) linear-signal-18))
+     '(define linear-signal-20 (lift (lambda (x) (res x)) linear-signal-19))
+     '(define linear-signal-21 (lift (lambda (x) (res x)) linear-signal-20))
+     '(define linear-signal-22 (lift (lambda (x) (res x)) linear-signal-21))
+     '(define linear-signal-23 (lift (lambda (x) (res x)) linear-signal-22))
+     '(define linear-signal-24 (lift (lambda (x) (res x)) linear-signal-23))
+     '(define linear-signal-25 (lift (lambda (x) (res x)) linear-signal-24))
+     '(define linear-signal-26 (lift (lambda (x) (res x)) linear-signal-25))
+     '(define linear-signal-27 (lift (lambda (x) (res x)) linear-signal-26))
+     '(define linear-signal-28 (lift (lambda (x) (res x)) linear-signal-27))
+     '(define linear-signal-29 (lift (lambda (x) (res x)) linear-signal-28))
+     '(define linear-signal-30 (lift (lambda (x) (res x)) linear-signal-29))
+     '(define linear-signal-31 (lift (lambda (x) (res x)) linear-signal-30))
+     '(define linear-signal-32 (lift (lambda (x) (res x)) linear-signal-31))
+     '(define linear-signal-33 (lift (lambda (x) (res x)) linear-signal-32))
+     '(define linear-signal-34 (lift (lambda (x) (res x)) linear-signal-33))
+     '(define linear-signal-35 (lift (lambda (x) (res x)) linear-signal-34))
+     '(define linear-signal-36 (lift (lambda (x) (res x)) linear-signal-35))
+     '(define linear-signal-37 (lift (lambda (x) (res x)) linear-signal-36))
+     '(define linear-signal-38 (lift (lambda (x) (res x)) linear-signal-37))
+     '(define linear-signal-39 (lift (lambda (x) (res x)) linear-signal-38))
+     '(define linear-signal-40 (lift (lambda (x) (res x)) linear-signal-39))
+     '(define linear-signal-41 (lift (lambda (x) (res x)) linear-signal-40))
+     '(define linear-signal-42 (lift (lambda (x) (res x)) linear-signal-41))
+     '(define linear-signal-43 (lift (lambda (x) (res x)) linear-signal-42))
+     '(define linear-signal-44 (lift (lambda (x) (res x)) linear-signal-43))
+     '(define linear-signal-45 (lift (lambda (x) (res x)) linear-signal-44))
+     '(define linear-signal-46 (lift (lambda (x) (res x)) linear-signal-45))
+     '(define linear-signal-47 (lift (lambda (x) (res x)) linear-signal-46))
+     '(define linear-signal-48 (lift (lambda (x) (res x)) linear-signal-47))
+     '(define linear-signal-49 (lift (lambda (x) (res x)) linear-signal-48))
+     '(define linear-signal-50 (lift (lambda (x) (res x)) linear-signal-49))
+     '(define linear-signal-51 (lift (lambda (x) (res x)) linear-signal-50))
+     '(define linear-signal-52 (lift (lambda (x) (res x)) linear-signal-51))
+     '(define linear-signal-53 (lift (lambda (x) (res x)) linear-signal-52))
+     '(define linear-signal-54 (lift (lambda (x) (res x)) linear-signal-53))
+     '(define linear-signal-55 (lift (lambda (x) (res x)) linear-signal-54))
+     '(define linear-signal-56 (lift (lambda (x) (res x)) linear-signal-55))
+     '(define linear-signal-57 (lift (lambda (x) (res x)) linear-signal-56))
+     '(define linear-signal-58 (lift (lambda (x) (res x)) linear-signal-57))
+     '(define linear-signal-59 (lift (lambda (x) (res x)) linear-signal-58))
+     '(define linear-signal-60 (lift (lambda (x) (res x)) linear-signal-59))
+     '(define linear-signal-61 (lift (lambda (x) (res x)) linear-signal-60))
+     '(define linear-signal-62 (lift (lambda (x) (res x)) linear-signal-61))
+     '(define linear-signal-63 (lift (lambda (x) (res x)) linear-signal-62))
+     '(define linear-signal-64 (lift (lambda (x) (res x)) linear-signal-63))
+     '(define linear-signal-65 (lift (lambda (x) (res x)) linear-signal-64))
+     '(define linear-signal-66 (lift (lambda (x) (res x)) linear-signal-65))
+     '(define linear-signal-67 (lift (lambda (x) (res x)) linear-signal-66))
+     '(define linear-signal-68 (lift (lambda (x) (res x)) linear-signal-67))
+     '(define linear-signal-69 (lift (lambda (x) (res x)) linear-signal-68))
+     '(define linear-signal-70 (lift (lambda (x) (res x)) linear-signal-69))
+     '(define linear-signal-71 (lift (lambda (x) (res x)) linear-signal-70))
+     '(define linear-signal-72 (lift (lambda (x) (res x)) linear-signal-71))
+     '(define linear-signal-73 (lift (lambda (x) (res x)) linear-signal-72))
+     '(define linear-signal-74 (lift (lambda (x) (res x)) linear-signal-73))
+     '(define linear-signal-75 (lift (lambda (x) (res x)) linear-signal-74))
+     '(define linear-signal-76 (lift (lambda (x) (res x)) linear-signal-75))
+     '(define linear-signal-77 (lift (lambda (x) (res x)) linear-signal-76))
+     '(define linear-signal-78 (lift (lambda (x) (res x)) linear-signal-77))
+     '(define linear-signal-79 (lift (lambda (x) (res x)) linear-signal-78))
+     '(define linear-signal-80 (lift (lambda (x) (res x)) linear-signal-79))
+     '(define linear-signal-81 (lift (lambda (x) (res x)) linear-signal-80))
+     '(define linear-signal-82 (lift (lambda (x) (res x)) linear-signal-81))
+     '(define linear-signal-83 (lift (lambda (x) (res x)) linear-signal-82))
+     '(define linear-signal-84 (lift (lambda (x) (res x)) linear-signal-83))
+     '(define linear-signal-85 (lift (lambda (x) (res x)) linear-signal-84))
+     '(define linear-signal-86 (lift (lambda (x) (res x)) linear-signal-85))
+     '(define linear-signal-87 (lift (lambda (x) (res x)) linear-signal-86))
+     '(define linear-signal-88 (lift (lambda (x) (res x)) linear-signal-87))
+     '(define linear-signal-89 (lift (lambda (x) (res x)) linear-signal-88))
+     '(define linear-signal-90 (lift (lambda (x) (res x)) linear-signal-89))
+     '(define linear-signal-91 (lift (lambda (x) (res x)) linear-signal-90))
+     '(define linear-signal-92 (lift (lambda (x) (res x)) linear-signal-91))
+     '(define linear-signal-93 (lift (lambda (x) (res x)) linear-signal-92))
+     '(define linear-signal-94 (lift (lambda (x) (res x)) linear-signal-93))
+     '(define linear-signal-95 (lift (lambda (x) (res x)) linear-signal-94))
+     '(define linear-signal-96 (lift (lambda (x) (res x)) linear-signal-95))
+     '(define linear-signal-97 (lift (lambda (x) (res x)) linear-signal-96))
+     '(define linear-signal-98 (lift (lambda (x) (res x)) linear-signal-97))
+     '(define linear-signal-99 (lift (lambda (x) (res x)) linear-signal-98))
+  )
+)
+(for-each evaluate program-inputs)
+
+;; ====================================
+;;        DATAFLOW INSTRUCTIONS
+;;
+;; Once all signals are known, they can be converted into dataflow instructions
+;; Every instruction represents one signal
+;; ====================================
+;; The flat list of topologically sorted signals
+(define topologically-sorted-signals (get-topologically-sorted-signals))
+
+;; Returns a unique index per signal that identifies the associated dataflow operation
+(define (get-signal-operation-index signal)
+  (+ (index-of topologically-sorted-signals signal) 1))
+
+;; Returns the argument index that the provided signal should use to send its new value to the provided child (this will be used for the port of the signal operation)
+(define (get-signal-operation-argument-index signal child)
+  (index-of (signal-parents child) signal))
+
+;; (operation number-of-inputs lambda ports)
+;;
+;; The lambda takes n arguments, where n = number-of-inputs, and sends the output to each port defined in the ports
+
+;; (ports port1 port2 port3 ...)
+;; (port link)
+;; 
+;; link = a reference to an argument of another instruction
+
+;; (link address port-number)
+;;
+;; address = index of the instruction, port-number = argument-index of the instruction
+(define (get-make-ro-val-operation-index)
+  (+ 1 (length topologically-sorted-signals))) 
+
+;; For each signal:
+;; operation with index i : lambda that takes p arguments where p = # parents
+(define (make-signal-operation signal)
+  (define parents (signal-parents signal))
+  (define children (signal-children signal))
+  (define value-provider (signal-value-provider signal))
+  (define (make-signal-operation-output-link child)
+    (quasiquote (link (unquote (get-signal-operation-index child)) (unquote (get-signal-operation-argument-index signal child)))))
+
+  ;; the number of arguments of the dataflow operation is equal to the number of parent signals.
+  ;; Source signals technically have no parents, so their value provider is just the identity function (lambda (x) x)
+  ;; This does mean that while they don't have any parents, their operation-number-of-args has to be 1
+  (define operation-number-of-args
+    (cond ((eq? (member signal source-signals) #f) (length parents))
+          (else 1)))
+
+  ;; executing a signal means computing the new value using the value-provider and passing the new value to the children  
+  (define operation-lambda value-provider)
+
+  ;; for each child (dependent signal) we create a link which identifies the operation index and argument index
+  ;; If a certain signal has no children, it is an output signal and we sent its values to the make-ro-val instruction
+  (define operation-ports
+    (cond ((null? children) (quasiquote (ports (port (link (unquote (get-make-ro-val-operation-index)) 0)))))
+          (else (quasiquote (ports (port (unquote-splicing (map make-signal-operation-output-link children))))))))
+  (quasiquote (operation (unquote operation-number-of-args) (unquote operation-lambda) (unquote operation-ports))))
+
+(define (make-instructions)
+  (define make-ro-store-instruction (list '(make-ro-store)))
+  (define signal-operations (map make-signal-operation topologically-sorted-signals))
+  (define make-ro-val-instruction (list '(make-ro 'val)))
+  (define operations (append make-ro-store-instruction signal-operations make-ro-val-instruction))
+  (apply instructions operations))
+
+;; Creates 1 new dataflow context + input tokens for each source signal of their current values and pushes those into the token queue
+(define (push-current-unix-timestamp dataflow-manager)
+  (add-inputs-with-return! dataflow-manager 1 (list (signal-value current-unix-timestamp))))
+  
+;; Infinitely tries to process tokens in the dataflow runtime
+;; Sleeps a few ms between every loop
+;; Skips processing when there are no tokens to process
+(define (dataflow-manager-processor-loop dataflow-manager)
+  (let loop ()
+    ;; block the thread until the dataflow engine produces another value
+    (define runtime-result (get-value! dataflow-manager))
+    ;;(display runtime-result)
+    (define value (car runtime-result))
+    (newline)
+    (display (string-append (number->string (current-milliseconds)) ";" (number->string value)))
+    (sleep 0.000001)
+    (loop)))
+
+(define (startup-dataflow-runtime)
+  (newline) (display "Creating dataflow instructions")
+  (define dataflow-instructions (make-instructions))
+  (newline) (display "OK Created dataflow instructions")
+
+  (define dataflow-manager (start-runtimes dataflow-instructions 4))
+  (define source-signal-callback (lambda () (push-current-unix-timestamp dataflow-manager)))
+  
+  (newline) (display "Starting up current-unix-timestamp-loop")
+  (define t1 (thread (lambda () (current-unix-timestamp-loop source-signal-callback))))
+  ;;(newline) (display "Starting up current-temp-fahrenheit-loop")
+  ;;(define t2 (thread (lambda () (current-temp-fahrenheit-loop source-signal-callback))))
+  (newline) (display "Starting up dataflow-manager-processor-loop")
+  (define t3 (thread (lambda () (dataflow-manager-processor-loop dataflow-manager))))
+  ;;(dataflow-manager-processor-loop dataflow-manager)
+  (sleep 10)
+  (newline) (display "Shutting down")
+  (kill-thread t1)
+  ;;(kill-thread t2)
+  (kill-thread t3)
+  )
+
+(startup-dataflow-runtime)
+
 ;; ====================================
 ;;                REPL
 ;; ====================================
@@ -586,7 +858,7 @@
   (let ((input (read)))
     (let ((output (eval input the-global-environment)))
       (announce-output output-prompt)
-      (user-print output)))
+      (print-output output)))
   (driver-loop))
 
 (define (prompt-for-input string)
@@ -595,64 +867,4 @@
 (define (announce-output string)
   (newline) (display string) (newline))
 
-(define (user-print object)
-  (if (compound-procedure? object)
-      (display (list 'compound-procedure
-                     (procedure-parameters object)
-                     (procedure-body object)
-                     '<procedure-env>))
-      (display object)))
-
-(define the-global-environment (setup-environment))
-
-;; ====================================
-;;             PERFORMANCE
-;; ====================================
-
-;; CASE 1: Linear signal
-(define (create-linear-signals number-of-signals)
-  (eval '(define (returnsame name)
-           (lambda (value) value))
-        the-global-environment)
-  (eval '(define linear-signal-0 (lift (returnsame "linear-signal-0") $current-seconds)) the-global-environment)
-
-  (define (apply-template new-signal-name previous-signal-name)
-    ;; (define linear-signal-3 (lift (plus1 "linear-signal-3") linear-signal-2))
-    (quasiquote (define (unquote new-signal-name) (lift (returnsame (unquote (symbol->string new-signal-name))) (unquote previous-signal-name)))))
-
-  (define (get-linear-signal-name number)
-    (string->symbol (string-append "linear-signal-" (number->string number))))
-  
-  (define (create-linear-signal current-number)
-    (define current-signal-name (get-linear-signal-name current-number))
-    (define previous-signal-name (get-linear-signal-name (- current-number 1)))
-    (define expression (apply-template current-signal-name previous-signal-name))
-    (eval expression the-global-environment))
-                            
-  (define (create-linear-signal-loop n)
-    (if (< n number-of-signals)
-      (begin
-        (create-linear-signal n)
-        (create-linear-signal-loop (+ n 1)))
-      #t))
-  
-  (create-linear-signal-loop 1)
-  (eval '(lift (lambda (value) (newline) (display (string-append (number->string (current-milliseconds)) ";" (number->string value))) value) linear-signal-99) the-global-environment)
-)
-
-(define ignore (create-linear-signals 100))
-
-;; keep built in signals up to date in separate threads
-(display "Booting current-seconds loop") (newline)
-(define currentsecondsthread (thread current-seconds-loop))
-(display "Booting random-integer loop") (newline)
-;;(thread random-integer-loop)
-(display "Booting update-signals loop") (newline)
-(define updatethread (thread update-signals-loop))
-(display "Booting driver loop")
 ;;(driver-loop)
-(display "Going to sleep for 60 seconds") (newline)
-(sleep 60)
-(display "Alright playtime's over, killing threads") (newline)
-(kill-thread currentsecondsthread)
-(kill-thread updatethread)
