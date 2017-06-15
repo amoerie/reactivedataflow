@@ -562,7 +562,7 @@
 ;; ==============================================
 ;; Signal graph + update loop
 ;; ==============================================
-(define source-signals (list current-unix-timestamp current-temp-fahrenheit))
+(define source-signals (list current-unix-timestamp))
 
 (define (get-topologically-sorted-signals)
   (define (topological-sort accumulator next-children)
@@ -653,7 +653,7 @@
 
 ;; Returns a unique index per signal that identifies the associated dataflow operation
 (define (get-signal-operation-index signal)
-  (index-of topologically-sorted-signals signal))
+  (+ (index-of topologically-sorted-signals signal) 1))
 
 ;; Returns the argument index that the provided signal should use to send its new value to the provided child (this will be used for the port of the signal operation)
 (define (get-signal-operation-argument-index signal child)
@@ -671,12 +671,8 @@
 ;; (link address port-number)
 ;;
 ;; address = index of the instruction, port-number = argument-index of the instruction
-
-(define (make-empty-return-operation)
-  (operation 1 (lambda (x) (list)) (ports )))
-
-(define (get-empty-return-operation-index)
-  (length topologically-sorted-signals)) 
+(define (get-make-ro-val-operation-index)
+  (+ 1 (length topologically-sorted-signals))) 
 
 ;; For each signal:
 ;; operation with index i : lambda that takes p arguments where p = # parents
@@ -698,16 +694,17 @@
   (define operation-lambda (quasiquote (lambda parent-values (list (apply (unquote value-provider) parent-values)))))
 
   ;; for each child (dependent signal) we create a link which identifies the operation index and argument index
-  ;; If a certain signal has no children, we simply redirect the output to the empty return operation
+  ;; If a certain signal has no children, it is an output signal and we sent its values to the make-ro-val instruction
   (define operation-ports
-    (cond ((null? children) (quasiquote (ports (port (link (unquote (get-empty-return-operation-index)) 0)))))
+    (cond ((null? children) (quasiquote (ports (port (link (unquote (get-make-ro-val-operation-index)) 0)))))
           (else (quasiquote (ports (port (unquote-splicing (map make-signal-operation-output-link children))))))))
   (quasiquote (operation (unquote operation-number-of-args) (unquote operation-lambda) (unquote operation-ports))))
 
 (define (make-instructions)
+  (define make-ro-store-instruction (list '(make-ro-store)))
   (define signal-operations (map make-signal-operation topologically-sorted-signals))
-  (define empty-return-operation (list (make-empty-return-operation)))
-  (define operations (append signal-operations empty-return-operation))
+  (define make-ro-val-instruction (list '(make-ro 'val)))
+  (define operations (append make-ro-store-instruction signal-operations make-ro-val-instruction))
   (apply instructions operations))
 
 (define (create-dataflow-runtime instructions)
@@ -754,14 +751,14 @@
   
   (newline) (display "Starting up current-unix-timestamp-loop")
   (define t1 (thread (lambda () (current-unix-timestamp-loop source-signal-callback))))
-  (newline) (display "Starting up current-temp-fahrenheit-loop")
-  (define t2 (thread (lambda () (current-temp-fahrenheit-loop source-signal-callback))))
+  ;;(newline) (display "Starting up current-temp-fahrenheit-loop")
+  ;;(define t2 (thread (lambda () (current-temp-fahrenheit-loop source-signal-callback))))
   (newline) (display "Starting up dataflow-runtime-processor-loop")
   (define t3 (thread (lambda () (dataflow-runtime-processor-loop dataflow-runtime))))
   (sleep 30)
   (newline) (display "Shutting down")
   (kill-thread t1)
-  (kill-thread t2)
+  ;;(kill-thread t2)
   (kill-thread t3)
   )
 
