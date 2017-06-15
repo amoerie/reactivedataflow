@@ -1,8 +1,8 @@
 #lang racket
+
 (require racket/date)
 (require "runtime.rkt")
 (include "runtime.rkt")
-
 ; Instruction types
 ; -----------------
 (define operation make-op)
@@ -533,7 +533,7 @@
 ;; current-unix-timestamp
 ;; : emits the current seconds since 1st January 1970, every second
 ;;
-(define current-unix-timestamp (make-signal '() '(lambda (x) x)))
+(define current-unix-timestamp (make-signal '() '(lambda (x) (res x))))
 (define (current-unix-timestamp-loop callback)
   (define index (get-signal-operation-index current-unix-timestamp))
   (let loop ()
@@ -549,7 +549,7 @@
 ;; current-temp-fahrenheit
 ;; : emits a random number between 1 and 100, every (random 1 .. 10 seconds)
 ;;
-(define current-temp-fahrenheit (make-signal '() '(lambda (x) x)))
+(define current-temp-fahrenheit (make-signal '() '(lambda (x) (res x))))
 (define (current-temp-fahrenheit-loop callback)
   (define index (get-signal-operation-index current-temp-fahrenheit))
   (let loop ()
@@ -637,7 +637,7 @@
    ;;     current-temp-celsius
    ;;     current-date))   
      '(define x 10)
-     '(define cursecplus1 (lift (lambda (x) (+ x 1)) current-unix-timestamp))
+     '(define cursecplus1 (lift (lambda (x) (res (+ x 1))) current-unix-timestamp))
   )
 )
 (for-each evaluate program-inputs)
@@ -691,7 +691,7 @@
           (else 1)))
 
   ;; executing a signal means computing the new value using the value-provider and passing the new value to the children  
-  (define operation-lambda (quasiquote (lambda parent-values (list (apply (unquote value-provider) parent-values)))))
+  (define operation-lambda value-provider)
 
   ;; for each child (dependent signal) we create a link which identifies the operation index and argument index
   ;; If a certain signal has no children, it is an output signal and we sent its values to the make-ro-val instruction
@@ -707,62 +707,47 @@
   (define operations (append make-ro-store-instruction signal-operations make-ro-val-instruction))
   (apply instructions operations))
 
-(define (create-dataflow-runtime instructions)
-  (make-runtime 0 instructions))
-
 ;; Creates 1 new dataflow context + input tokens for each source signal of their current values and pushes those into the token queue
-(define (push-source-signals-current-values dataflow-runtime)
-  ;; TODO change this!!!! 
-  #f)
-  ;;(define dataflow-context (context-manager-get! (runtime-context-manager dataflow-runtime)))
-  ;;(for-each (lambda (source-signal) (push-source-signals-current-value source-signal dataflow-runtime dataflow-context)) source-signals))
-
-;; Creates a new input token for the given source-signal (only if the source signal has a value)
-(define (push-source-signals-current-value source-signal dataflow-runtime dataflow-context)
-    ;; TODO change this!!!! 
-  #f)
-  ;;(when (signal-has-value? source-signal)
-  ;;  (let ((index (get-signal-operation-index source-signal))
-  ;;        (value (signal-value source-signal)))
-  ;;    (runtime-add-inputs! dataflow-runtime dataflow-context index (list value)))))
-
+(define (push-current-unix-timestamp dataflow-manager)
+  (add-inputs-with-return! dataflow-manager 1 (list (signal-value current-unix-timestamp))))
+  
 ;; Infinitely tries to process tokens in the dataflow runtime
 ;; Sleeps a few ms between every loop
 ;; Skips processing when there are no tokens to process
-(define (dataflow-runtime-processor-loop dataflow-runtime)
-      ;; TODO change this!!!! 
-  #f)
-  ;;(let loop ()
-  ;;  (when (not (runtime-finished? dataflow-runtime))
-  ;;    (runtime-process-token! dataflow-runtime))
-  ;;  (sleep 0.05)
-  ;;  (loop)))
+(define (dataflow-manager-processor-loop dataflow-manager)
+  (let loop ()
+    ;; block the thread until the dataflow engine produces another value
+    (define runtime-result (get-value! dataflow-manager))
+    ;;(display runtime-result)
+    (define value (car runtime-result))
+    (newline)
+    (display (string-append (number->string (current-milliseconds)) ";" (number->string value)))
+    (sleep 0.05)
+    (loop)))
 
 (define (startup-dataflow-runtime)
   (newline) (display "Creating dataflow instructions")
   (define dataflow-instructions (make-instructions))
   (newline) (display "OK Created dataflow instructions")
 
-  (newline) (display "Creating dataflow runtime")
-  (define dataflow-runtime (create-dataflow-runtime dataflow-instructions))
-  (newline) (display "OK Created dataflow runtime")
-
-  (define source-signal-callback (lambda () (push-source-signals-current-values dataflow-runtime)))
+  (define dataflow-manager (start-runtimes dataflow-instructions 1))
+  (define source-signal-callback (lambda () (push-current-unix-timestamp dataflow-manager)))
   
   (newline) (display "Starting up current-unix-timestamp-loop")
   (define t1 (thread (lambda () (current-unix-timestamp-loop source-signal-callback))))
   ;;(newline) (display "Starting up current-temp-fahrenheit-loop")
   ;;(define t2 (thread (lambda () (current-temp-fahrenheit-loop source-signal-callback))))
-  (newline) (display "Starting up dataflow-runtime-processor-loop")
-  (define t3 (thread (lambda () (dataflow-runtime-processor-loop dataflow-runtime))))
-  (sleep 30)
+  (newline) (display "Starting up dataflow-manager-processor-loop")
+  ;;(define t3 (thread (lambda () (dataflow-manager-processor-loop dataflow-manager))))
+  (dataflow-manager-processor-loop dataflow-manager)
+  (sleep 5)
   (newline) (display "Shutting down")
   (kill-thread t1)
   ;;(kill-thread t2)
-  (kill-thread t3)
+  ;;(kill-thread t3)
   )
 
-;;(startup-dataflow-runtime)
+(startup-dataflow-runtime)
 
 ;; ====================================
 ;;                REPL
