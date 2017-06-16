@@ -534,6 +534,11 @@
 ;; : emits the current seconds since 1st January 1970, every second
 ;;
 (define current-unix-timestamp (make-signal '() '(lambda (x) (res x))))
+(define (update-current-unix-timestamp! dataflow-manager)
+  (define new-value (current-milliseconds))
+  (signal-value! current-unix-timestamp new-value)
+  (add-inputs-with-return! dataflow-manager 1 (list new-value)))
+
 (define (current-unix-timestamp-loop callback)
   (define index (get-signal-operation-index current-unix-timestamp))
   
@@ -820,6 +825,7 @@
       (let ((runtime-result (get-value! dataflow-manager)))
         (set! results (cons (string-append (number->string (current-milliseconds)) ";" (number->string (car runtime-result)) " ") results))
         (sleep 0.0000001)
+        (update-current-unix-timestamp! dataflow-manager)
         (loop))
       results)))
 
@@ -829,15 +835,15 @@
   (newline) (display "OK Created dataflow instructions")
 
   (define dataflow-manager (start-runtimes dataflow-instructions 4))
-  (define source-signal-callback (lambda () (push-current-unix-timestamp dataflow-manager)))
+  (update-current-unix-timestamp! dataflow-manager)
   
   (newline) (display "Starting up current-unix-timestamp-loop")
   ;;(newline) (display "Starting up current-temp-fahrenheit-loop")
   ;;(define t2 (thread (lambda () (current-temp-fahrenheit-loop source-signal-callback))))
   (newline) (display "Starting up dataflow-manager-processor-loop")
-  (define t1 (thread (lambda () (current-unix-timestamp-loop source-signal-callback))))
-  (thread (lambda () (sleep 1000) (kill-thread t1)))
-  (define results (dataflow-manager-processor-loop dataflow-manager (+ (current-milliseconds) 1000)))
+  ;;(define t1 (thread (lambda () (current-unix-timestamp-loop source-signal-callback))))
+  ;;(thread (lambda () (sleep 1000) (kill-thread t1)))
+  (define results (dataflow-manager-processor-loop dataflow-manager (+ (current-milliseconds) 6000)))
   (stop-runtimes dataflow-manager)
   ;;(dataflow-manager-processor-loop dataflow-manager
   (newline) (display "Shutting down")
