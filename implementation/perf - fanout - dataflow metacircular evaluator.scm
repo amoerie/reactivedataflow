@@ -540,7 +540,7 @@
     (define new-value (current-milliseconds))
     (signal-value! current-unix-timestamp new-value)
     (callback)
-    (sleep 0.000001)
+    (sleep 0.00000000001)
     (loop)))
 
 ;;
@@ -812,10 +812,6 @@
 (define (push-current-unix-timestamp dataflow-manager)
   (add-inputs-with-return! dataflow-manager 1 (list (signal-value current-unix-timestamp))))
 
-(define (display-result result)
-  (display result)
-  (newline))
-
 ;; Infinitely tries to process tokens in the dataflow runtime
 ;; Sleeps a few ms between every loop
 ;; Skips processing when there are no tokens to process
@@ -825,10 +821,10 @@
     (define timestamp (current-milliseconds))
     (if (< timestamp timeout)
       (let ((runtime-result (get-value! dataflow-manager)))
-        (set! results (cons (string-append (number->string timestamp) ";" (number->string (car runtime-result))) results))
+        (set! results (cons (string-append (number->string timestamp) ";" (number->string (car runtime-result)) " ") results))
         (sleep 0.0000001)
         (loop))
-      (for-each display-result results))))
+      (for-each display results))))
 
 (define (startup-dataflow-runtime)
   (newline) (display "Creating dataflow instructions")
@@ -845,7 +841,7 @@
   (newline) (display "Starting up dataflow-manager-processor-loop")
   (define t3 (thread (lambda () (dataflow-manager-processor-loop dataflow-manager (+ (current-milliseconds) 6000)))))
   ;;(dataflow-manager-processor-loop dataflow-manager)
-  (sleep 6)
+  (sleep 10)
   (newline) (display "Shutting down")
   (kill-thread t1)
   ;;(kill-thread t2)

@@ -541,7 +541,7 @@
     (define new-value (current-milliseconds))
     (signal-value! current-unix-timestamp new-value)
     (callback)
-    (sleep 0.0000001)
+    (sleep 0.000001)
     (loop)))
 
 ;;
@@ -809,10 +809,6 @@
 ;; Creates 1 new dataflow context + input tokens for each source signal of their current values and pushes those into the token queue
 (define (push-current-unix-timestamp dataflow-manager)
   (add-inputs-with-return! dataflow-manager 1 (list (signal-value current-unix-timestamp))))
-  
-(define (display-result result)
-  (display result)
-  (newline))
 
 ;; Infinitely tries to process tokens in the dataflow runtime
 ;; Sleeps a few ms between every loop
@@ -823,10 +819,10 @@
     (define timestamp (current-milliseconds))
     (if (< timestamp timeout)
       (let ((runtime-result (get-value! dataflow-manager)))
-        (set! results (cons (string-append (number->string timestamp) ";" (number->string (car runtime-result))) results))
+        (set! results (cons (string-append (number->string timestamp) ";" (number->string (car runtime-result)) " ") results))
         (sleep 0.0000001)
         (loop))
-      (for-each display-result results))))
+      (for-each display results))))
 
 (define (startup-dataflow-runtime)
   (newline) (display "Creating dataflow instructions")
@@ -840,10 +836,10 @@
   ;;(newline) (display "Starting up current-temp-fahrenheit-loop")
   ;;(define t2 (thread (lambda () (current-temp-fahrenheit-loop source-signal-callback))))
   (newline) (display "Starting up dataflow-manager-processor-loop")
-  (define t3 (thread (lambda () (dataflow-manager-processor-loop dataflow-manager (+ (current-milliseconds) 60000)))))
   (define t1 (thread (lambda () (current-unix-timestamp-loop source-signal-callback))))
+  (define t3 (thread (lambda () (dataflow-manager-processor-loop dataflow-manager (+ (current-milliseconds) 10000)))))
   ;;(dataflow-manager-processor-loop dataflow-manager)
-  (sleep 60)
+  (sleep 11)
   (newline) (display "Shutting down")
   (kill-thread t1)
   ;;(kill-thread t2)

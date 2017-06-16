@@ -540,7 +540,7 @@
     (define new-value (current-milliseconds))
     (signal-value! current-unix-timestamp new-value)
     (callback)
-    (sleep 0.000001)
+    (sleep 0.0000001)
     (loop)))
 
 ;;
@@ -733,8 +733,8 @@
    '(define square-signal-97 (lift (lambda (x) (res x)) square-signal-87))
    '(define square-signal-98 (lift (lambda (x) (res x)) square-signal-88))
    '(define square-signal-99 (lift (lambda (x) (res x)) square-signal-89))
-   '(define square-signal-100 (lift (lambda (v90 v91 v92 v93 v94 v95 v96 v97 v98 v99) (res v99)) 
-                                    square-signal-90 square-signal-91 square-signal-92 square-signal-93 square-signal-94 square-signal-95 square-signal-96 square-signal-97 square-signal-98 square-signal-99))
+   ;;'(define square-signal-100 (lift (lambda (v90 v91 v92 v93 v94 v95 v96 v97 v98 v99) (res v99)) 
+   ;;                                 square-signal-90 square-signal-91 square-signal-92 square-signal-93 square-signal-94 square-signal-95 square-signal-96 square-signal-97 square-signal-98 square-signal-99))
    )
 )
 (for-each evaluate program-inputs)
@@ -811,16 +811,15 @@
 ;; Infinitely tries to process tokens in the dataflow runtime
 ;; Sleeps a few ms between every loop
 ;; Skips processing when there are no tokens to process
-(define (dataflow-manager-processor-loop dataflow-manager)
+(define (dataflow-manager-processor-loop dataflow-manager timeout)
+  (define results '())
   (let loop ()
-    ;; block the thread until the dataflow engine produces another value
-    (define runtime-result (get-value! dataflow-manager))
-    ;;(display runtime-result)
-    (define value (car runtime-result))
-    (newline)
-    (display (string-append (number->string (current-milliseconds)) ";" (number->string value)))
-    (sleep 0.0000001)
-    (loop)))
+    (if (< (current-milliseconds) timeout)
+      (let ((runtime-result (get-value! dataflow-manager)))
+        (set! results (cons (string-append (number->string (current-milliseconds)) ";" (number->string (car runtime-result)) " ") results))
+        (sleep 0.00000001)
+        (loop))
+      (for-each display results))))
 
 (define (startup-dataflow-runtime)
   (newline) (display "Creating dataflow instructions")
@@ -835,13 +834,13 @@
   ;;(newline) (display "Starting up current-temp-fahrenheit-loop")
   ;;(define t2 (thread (lambda () (current-temp-fahrenheit-loop source-signal-callback))))
   (newline) (display "Starting up dataflow-manager-processor-loop")
-  (define t3 (thread (lambda () (dataflow-manager-processor-loop dataflow-manager))))
+  (define t3 (thread (lambda () (dataflow-manager-processor-loop dataflow-manager (+ (current-milliseconds) 10000)))))
   ;;(dataflow-manager-processor-loop dataflow-manager)
-  (sleep 60)
+  (sleep 15)
   (newline) (display "Shutting down")
   (kill-thread t1)
   ;;(kill-thread t2)
-  (kill-thread t3)
+  ;;(kill-thread t3)
   )
 
 (startup-dataflow-runtime)

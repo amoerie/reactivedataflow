@@ -373,6 +373,8 @@
 
 (define (primitive-implementation proc) (cadr proc))
 
+(define strings '())
+
 (define primitive-procedures
   (list (list 'car car)
         (list 'cdr cdr)
@@ -389,6 +391,7 @@
         (list 'newline newline)
         (list 'even? even?)
         (list 'value (lambda (exp) (signal-value (signal-wrapper-unwrap exp))))
+        (list 'save-string (lambda (str) (set! strings (cons str strings))))
 ;;      more primitives
         ))
 
@@ -713,16 +716,16 @@
   (eval '(define square-signal-98 (lift returnsame square-signal-88)) the-global-environment)
   (eval '(define square-signal-99 (lift returnsame square-signal-89)) the-global-environment)
 
-  (eval '(lift (lambda (value) (newline) (display (string-append (number->string (current-milliseconds)) ";" (number->string value))) value) linear-signal-90) the-global-environment)
-  (eval '(lift (lambda (value) (newline) (display (string-append (number->string (current-milliseconds)) ";" (number->string value))) value) linear-signal-91) the-global-environment)
-  (eval '(lift (lambda (value) (newline) (display (string-append (number->string (current-milliseconds)) ";" (number->string value))) value) linear-signal-92) the-global-environment)
-  (eval '(lift (lambda (value) (newline) (display (string-append (number->string (current-milliseconds)) ";" (number->string value))) value) linear-signal-93) the-global-environment)
-  (eval '(lift (lambda (value) (newline) (display (string-append (number->string (current-milliseconds)) ";" (number->string value))) value) linear-signal-94) the-global-environment)
-  (eval '(lift (lambda (value) (newline) (display (string-append (number->string (current-milliseconds)) ";" (number->string value))) value) linear-signal-95) the-global-environment)
-  (eval '(lift (lambda (value) (newline) (display (string-append (number->string (current-milliseconds)) ";" (number->string value))) value) linear-signal-96) the-global-environment)
-  (eval '(lift (lambda (value) (newline) (display (string-append (number->string (current-milliseconds)) ";" (number->string value))) value) linear-signal-97) the-global-environment)
-  (eval '(lift (lambda (value) (newline) (display (string-append (number->string (current-milliseconds)) ";" (number->string value))) value) linear-signal-98) the-global-environment)
-  (eval '(lift (lambda (value) (newline) (display (string-append (number->string (current-milliseconds)) ";" (number->string value))) value) linear-signal-99) the-global-environment)
+  (eval '(lift (lambda (value) (save-string (string-append (number->string (current-milliseconds)) ";" (number->string value) " ")) value) linear-signal-90) the-global-environment)
+  (eval '(lift (lambda (value) (save-string (string-append (number->string (current-milliseconds)) ";" (number->string value) " ")) value) linear-signal-91) the-global-environment)
+  (eval '(lift (lambda (value) (save-string (string-append (number->string (current-milliseconds)) ";" (number->string value) " ")) value) linear-signal-92) the-global-environment)
+  (eval '(lift (lambda (value) (save-string (string-append (number->string (current-milliseconds)) ";" (number->string value) " ")) value) linear-signal-93) the-global-environment)
+  (eval '(lift (lambda (value) (save-string (string-append (number->string (current-milliseconds)) ";" (number->string value) " ")) value) linear-signal-94) the-global-environment)
+  (eval '(lift (lambda (value) (save-string (string-append (number->string (current-milliseconds)) ";" (number->string value) " ")) value) linear-signal-95) the-global-environment)
+  (eval '(lift (lambda (value) (save-string (string-append (number->string (current-milliseconds)) ";" (number->string value) " ")) value) linear-signal-96) the-global-environment)
+  (eval '(lift (lambda (value) (save-string (string-append (number->string (current-milliseconds)) ";" (number->string value) " ")) value) linear-signal-97) the-global-environment)
+  (eval '(lift (lambda (value) (save-string (string-append (number->string (current-milliseconds)) ";" (number->string value) " ")) value) linear-signal-98) the-global-environment)
+  (eval '(lift (lambda (value) (save-string (string-append (number->string (current-milliseconds)) ";" (number->string value) " ")) value) linear-signal-99) the-global-environment)
 )
 
 (define ignore (create-square-signals))
@@ -736,8 +739,9 @@
 (define updatethread (thread update-signals-loop))
 (display "Booting driver loop")
 ;;(driver-loop)
-(display "Going to sleep for 60 seconds") (newline)
-(sleep 60)
+(display "Going to sleep for 10 seconds") (newline)
+(sleep 10)
 (display "Alright playtime's over, killing threads") (newline)
 (kill-thread currentsecondsthread)
 (kill-thread updatethread)
+(for-each display strings)
