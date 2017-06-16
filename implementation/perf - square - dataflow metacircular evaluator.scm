@@ -540,7 +540,7 @@
     (define new-value (current-milliseconds))
     (signal-value! current-unix-timestamp new-value)
     (callback)
-    (sleep 0.0000001)
+    (sleep 0.000001)
     (loop)))
 
 ;;
@@ -817,9 +817,9 @@
     (if (< (current-milliseconds) timeout)
       (let ((runtime-result (get-value! dataflow-manager)))
         (set! results (cons (string-append (number->string (current-milliseconds)) ";" (number->string (car runtime-result)) " ") results))
-        (sleep 0.00000001)
+        (sleep 0.0000001)
         (loop))
-      (for-each display results))))
+      results)))
 
 (define (startup-dataflow-runtime)
   (newline) (display "Creating dataflow instructions")
@@ -834,11 +834,13 @@
   ;;(newline) (display "Starting up current-temp-fahrenheit-loop")
   ;;(define t2 (thread (lambda () (current-temp-fahrenheit-loop source-signal-callback))))
   (newline) (display "Starting up dataflow-manager-processor-loop")
-  (define t3 (thread (lambda () (dataflow-manager-processor-loop dataflow-manager (+ (current-milliseconds) 10000)))))
-  ;;(dataflow-manager-processor-loop dataflow-manager)
-  (sleep 15)
+  (define results (dataflow-manager-processor-loop dataflow-manager (+ (current-milliseconds) 6000)))
+  (stop-runtimes dataflow-manager)
+  ;;(dataflow-manager-processor-loop dataflow-manager
   (newline) (display "Shutting down")
-  (kill-thread t1)
+  ;;(kill-thread t1)
+  (newline)
+  (for-each display results)
   ;;(kill-thread t2)
   ;;(kill-thread t3)
   )

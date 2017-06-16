@@ -2,11 +2,12 @@
 
 \section{Introduction}
 
-In this chapter, we take a look at the performance characteristics of the two interpreters we created for FrDataFlow. We will explore different types of reactive programs and how they behave under high loads of data, comparing them on a few metrics. More specifically, we will focus on the following two metrics:
+In this chapter, we investigate the performance characteristics of the two runtimes we created for FrDataFlow. We will explore different types of reactive programs and how they behave under high loads of data, comparing them on a few metrics. More specifically, we will focus on the following metrics:
 
 \begin{description}[style=nextline]
   \item [Latency]		The time it takes for a value to propagate through the entire graph of signals
   \item [Throughput]	The amount of values that can propagate through the entire graph within a certain time frame.
+  \item [Scaling]		The amount of performance that can be gained by executing the program in parallel
 \end{description}
 
 These objective measurements can provide us with meaningful insight as to how efficient both interpreters are, and what the effects of parallelization are for our benchmarks.

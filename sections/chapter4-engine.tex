@@ -4,7 +4,7 @@
 
 In this chapter, a dataflow engine is presented based on the work detailed in \citet{saey_extensible_2017}.
 This engine is designed to support parallel execution of instructions by queuing all operands to instructions and executing these in a scope agnostic way.
-Tagged token dataflow is an extension to the data flow model where tags are used to distinguish the execution context of tokens, i.e. multiple invocations of the same instruction with different execution contexts, for example calling the same function twice.
+Tagged token dataflow is an extension to the data flow model where tags are used to distinguish the execution context of tokens, i.e. multiple invocations of the same instruction with different execution contexts, for example calling the same function twice (See section \ref{sec:tagged-token-dataflow}).
 For the purposes of this thesis, a lightweight version of this engine has been implemented in Racket to facilitate the mapping process from FrDataFlow. Furthermore, we implemented a mapping layer that translates reactive signals to data flow instructions. Even though there were some mismatches that needed to be addressed, reactive programs can now be expressed in FrDataFlow and evaluated atop the dataflow engine. 
 
 \newpage
@@ -16,7 +16,7 @@ The dataflow engine consists of four core components:
 
 \begin{description}[style=nextline]
 	\item[The token queue] This contains the tokens that need to be processed. A token has a value and meta data about which instruction it needs to be sent to. 
-	\item[The matching memory] This stores the operands per instruction and per context.
+	\item[The matching memory] This stores the operands per instruction and per context. As long as not all inputs are present and the instruction is not ready to be invoked, these partial sets of inputs are kept here.
 	\item[The execution unit] This unit will actually invoke the instructions with its operands
 \end{description}
 
@@ -114,25 +114,22 @@ This program behaves exactly the same as the reactive version, the only differen
 
 \subsection{Updating signals on a dataflow runtime}
 
-\paragraph{Problem description}
-
 In reactive programs, signals with a dependency to two or more parent signals are updated whenever at least one of their parents emits a new value. This boils down to the signal functioning as a mapping of the latest values of its parents. Taking our example, this means that when the current temperature changes, the billboard will update immediately, even if the current date has not changed at all.
 Similarly, the billboard label updates when the date changes, even if the temperature has not emitted a new value. In a sense, signals remember the latest values from each parent and reuse them whenever a new value from one of the parent comes in.
 
 In the dataflow engine, an instruction that gets invoked consumes its tokens. Once the instruction has been invoked, the tokens are thrown away. This is problematic, because when the current temperature emits a new value, it produces a new token. The dataflow engine will assign this token to the billboard label node, but will keep waiting until the current date produces another token as well before invoking the billboard label again. This means that a signal which is now mapped as a dataflow node does not update until ALL of its parents have emitted new values. This is the biggest mismatch between the reactive model and the data flow model.
 
-\paragraph{Solution description}
-
 Simulating the behavior of reactive signals in the data flow model requires a way to retrieve the latest values of other parent signals when a new token arrives. 
 Although each signal has references to all of its parents, it is not advisable to just read out the latest values and generate extra tokens for the other parents as well. This is because a strict requirement of the dataflow model is that nodes must be processed in isolation and cannot access shared state, which is what retrieving the latest values of the parents would amount to.  
 This would break the potential for parallelism, because it should be presumed that these dataflow nodes live in and are invoked on separate processes and even machines. The whole premise of the dataflow model is that nodes are only allowed to access the incoming data from the tokens and nothing else.
 
-We propose to simulate new signal emissions for all the source signals (signals without parents that get updated by the runtime outside the update loop) whenever one of the source signals emits. Since there is no language support for filtering, throttling or dynamically manipulating the flow of data through the graph, it can be safely assumed that emitting new values from the source signals will ripple through the entire graph, causing all nodes to be updated in the same order. In practice, this means that whenever a new temperature is sent out, the current seconds also pushes a value out at the same time. The necessary tokens for all of the source signals are put on the queue at the same time, simulating the required behavior: whenever one parent emits, the other parents do too. This results in the desired behavior: whenever one parent signal emits, the other parents do too so that all the children are recomputed, without having to memorize any of their parents' values. 
+We propose to simulate new signal emissions for all of the \textit{source signals} whenever one of them emits a new value. These are signals without parents that get updated by the runtime outside of the update loop. Since there is no language support for filtering, throttling or dynamically manipulating the flow of data through the graph, it can be safely assumed that emitting new values from the source signals will ripple through the entire graph, causing all nodes to be updated. In practice, this means that whenever a new temperature is sent out, the current seconds also pushes a value out at the same time. The necessary tokens for all of the source signals are put on the queue at the same time, simulating the required behavior: whenever one parent emits, the other parents do too. This results in the desired behavior: whenever one parent signal emits, the other parents do too so that all the children are recomputed, without having to memorize any of their parents' values. 
 
+\newpage
 \section{Conclusion}
 
 In this chapter, we presented a tagged token dataflow engine. This is a runtime that enqueues arguments to instructions and executes these in parallel. 
-When interpreting code in the FrDataFlow language, the reactive signals are mapped to dataflow nodes in the engine using a custom mapping layer. During this process, mismatches between reactive programming and the dataflow model are tackled. For example, all source signals emit new values whenever one of them has a new value, to avoid signals waiting in the dataflow engine for inputs from all their parents. Secondly, since return values are not supported in the dataflow engine, the decision was made to only model signals as dataflow instructions and leave the rest of the code execution inside the original interpreter code. 
+When interpreting code in the FrDataFlow language, the reactive signals are mapped to dataflow nodes in the engine using a custom mapping layer. During this process, mismatches between reactive programming and the dataflow model are tackled. This is done by making all source signals emit new values whenever one of them has a new value, to avoid signals waiting in the dataflow engine for inputs from all their parents. Secondly, since return values are not supported in the dataflow engine, the decision was made to only model signals as dataflow instructions and leave the rest of the code execution inside the original interpreter code. 
 In the end, we have a reactive system running atop a parallel dataflow engine, triggering updates in the correct way whenever a parent signal emits. 
 
 

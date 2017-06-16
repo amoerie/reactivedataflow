@@ -81,14 +81,15 @@ In a traditional execution, the variable a would be set to the sum of b and c an
 	\label{fig:background-dataflow-example}
 \end{figure}
 
-In a dataflow engine, these instructions are registered as nodes in the dependency graph, as visualized by figure \ref{fig:background-dataflow-example}. What really happens is that the values of b and c are added as tokens to the processing pipeline at application startup. The value of b is added as a token twice; once for the "+" instruction which computes the value of a and once for the "+" instruction which computes the value of d. When the dataflow engine spins up and starts processing data, it sends the tokens for b and c to the first "+" instruction, which is triggered because all of its inputs are present. This produces a value for a, which gets added as a token to the processing pipeline again as the first operand for the second "+" instruction. This instruction now also has all of its inputs present, which allows it to compute the value for variable d at this point.
+In a dataflow engine, these instructions are registered as nodes in the dependency graph, as visualized by figure \ref{fig:background-dataflow-example}. What really happens is that the values of b and c are added as tokens to the processing pipeline at application startup. The value of b is added as a token twice; once for the "+" instruction which computes the value of a and once for the "+" instruction which computes the value of d. When the dataflow engine spins up and starts processing data, it sends the tokens for b and c to the first "+" instruction, which is triggered because all of its inputs are present. This consumes the input tokens of b and c and produces a value for a, which gets added as a token to the processing pipeline again as the first operand for the second "+" instruction. This instruction now also has all of its inputs present, which allows it to compute the value for variable d at this point.
 
 If at any point in the future, b or c (which should be seen as the output of other instructions not shown in the sample code) produce new values, these would be enqueued again in the pipeline for further processing.
 
 \subsection{Tagged Token DataFlow}
+\label{sec:tagged-token-dataflow}
 
 The dataflow model has different possible implementations, in this dissertation we solely focus on \textit{tagged token dataflow} \citep{arvind_executing_1990}.
-In this version, instruction arguments, i.e. tokens, are tagged with meta data to provide the engine with the necessary information to orchestrate the data flows and also to provide the possibility of making the graph reentrant by using execution contexts. A token consists of the following parts, as shown in figure \ref{fig:background-dataflow-token}:
+In this version, instruction arguments, i.e. tokens, are tagged with meta data to provide the engine with the necessary information to orchestrate the data flows and also to provide the possibility of making the graph reentrant by using execution contexts. For example, when calling a function multiple times the engine has to ensure these calls are separated correctly when invoking the instructions. A token consists of the following parts, as shown in figure \ref{fig:background-dataflow-token}:
 
 \begin{figure}[ht]
 	\centerline{\includegraphics[width=\textwidth]{images/background-dataflow-token.png}}
@@ -113,7 +114,7 @@ The key advantage of the data flow model is that only the data dependencies of t
 
 Two paradigms were presented: reactive programming and the dataflow model. 
 
-A large difference between both is that the dataflow model puts the instruction invocation at the center stage, while reactive programming puts forward signals as the core concept of its paradigm. In other words, while both systems have the notion of a dependency graph, the nodes in their graphs carry different concepts: instructions and signals respectively.
+A large difference between both is that the dataflow model puts the instruction invocation at the center stage, while reactive programming puts forward signals as the core concept of its paradigm. In other words, while both systems have the notion of a dependency graph, the nodes in their graphs carry different concepts: instructions and signals respectively. Dataflow execution models will also consume  inputs when instructions are invoked, while reactive programs do not. On the contrary, signals reuse earlier values when only one new input is provided to compute a new result. 
 
 Reactive programming is targeted more towards events and reactions and shines best in environments where these things are plenty, for example in user interfaces and other places where events can come from any direction. The dataflow model on its part focuses more on the parallel execution of instructions by streaming operands to them in isolated scopes. We do however note similarities between the two, namely that they both work with an update graph that guides the data along its nodes. 
 

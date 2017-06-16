@@ -531,7 +531,7 @@
 (define $current-seconds (make-signal '() current-milliseconds))
 (define (current-seconds-loop)
   (signal-up-to-date! $current-seconds #f)
-  (sleep 0.000001)
+  (sleep 0.0000001)
   (current-seconds-loop))
 
 ;;
