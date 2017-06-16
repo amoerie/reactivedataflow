@@ -717,7 +717,7 @@
   (eval '(lift (lambda (value) (save-string (string-append (number->string (current-milliseconds)) ";" (number->string value) " ")) value) linear-signal-99) the-global-environment)
 )
 
-(define ignore (create-linear-signals 100))
+(define ignore (create-linear-signals))
 
 ;; keep built in signals up to date in separate threads
 (display "Booting current-seconds loop") (newline)
