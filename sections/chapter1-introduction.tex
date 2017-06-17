@@ -35,25 +35,10 @@ In chapter 3, our custom language FrDataFlow is presented, with an elaborate sam
 
 The dataflow engine is discussed in chapter 4. This is an implementation of the dataflow execution model that powers the update mechanism in FrDataFlow. A short sample is provided to show how instructions are invoked in this engine, and how output from one instruction gets forwarded to the input argument of another. Next, the main research topic of this dissertation is presented: the mapping algorithm. This is the translation we make from the graph in reactive programming to a new graph of instructions for the dataflow engine. Encountered obstacles and corresponding workarounds are discussed.
 
-Chapter 5 details the evaluation of our research. 
-% TODO
-*** TODO ***
-*** TODO ***
-*** TODO ***
-*** TODO ***
-*** TODO ***
-*** TODO ***
-*** TODO ***
+Chapter 5 details the evaluation of our research. We investigate the consequences of running a reactive system on top of a dataflow engine with regards to efficiency. Furthermore, we discuss the benefits and downsides of running reactive programs in parallel in terms of latency and throughput of values. 
 
 In chapter 6, we summarize the boundaries at which this research has drawn a line and discuss possible future improvements or extensions to our system. We do this by recognizing features provided in other reactive languages or frameworks, that are not present in FrDataFlow. 
 
 Related research topics are discussed in chapter 7. We took great inspiration from ambitious works such as Elm and FrTime, which we compare with FrDataFlow in terms of design and evaluation. 
 
-Finally, we conclude with chapter 8, which summarizes our findings of this research.
-*** TODO ***
-*** TODO ***
-*** TODO ***
-*** TODO ***
-*** TODO ***
-*** TODO ***
-*** TODO ***
+Finally, we conclude with chapter 8, which summarizes our findings of this research. We revisit the original problem statement and summarize our contributions to this space. 

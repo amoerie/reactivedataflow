@@ -57,7 +57,8 @@ This program computes the average of two numbers twice using different arguments
 In this example, the 2 and 6 belong to the same execution context, while 1 and 5 will belong to a different one. 
 
 \begin{figure}[h!]
-	\includegraphics[width=\textwidth]{images/Engine-Architecture-1.png}
+	\centering
+	\includegraphics[scale=0.8]{images/Engine-Architecture-1.png}
 	\caption{The corresponding data flow nodes for two calls to the \textit{average} function. Each color represents a different execution context.}
 	\label{fig:engine-architecture-1}
 \end{figure}
@@ -65,7 +66,8 @@ In this example, the 2 and 6 belong to the same execution context, while 1 and 5
 In figure \ref{fig:engine-architecture-1} we see the arguments queued up against the \textit{plus} instruction. Colors indicate the execution context. At this point, the token queue consists of 2, 6, 1, 5 and two 2s. These values are all wrapped in a token containing meta data, i.e. the tag. 
 
 \begin{figure}[h!]
-	\includegraphics[width=\textwidth]{images/Engine-Architecture-2.png}
+	\centering
+	\includegraphics[scale=0.8]{images/Engine-Architecture-2.png}
 	\caption{The results of the \textit{plus} instruction are forwarded to the \textit{divide} instruction}
 	\label{fig:engine-architecture-2}
 \end{figure}
@@ -74,19 +76,22 @@ Since all inputs are present for the first invocation, the \textit{plus} instruc
 The next thing that happens in figure \ref{fig:engine-architecture-3} is the same step for 1 and 5.
 
 \begin{figure}[h!]
-	\includegraphics[width=\textwidth]{images/Engine-Architecture-3.png}
+	\centering
+	\includegraphics[scale=0.8]{images/Engine-Architecture-3.png}
 	\caption{The second invocation of the \textit{plus} instruction finishes. All inputs are now present for the \textit{divide} instruction for both execution contexts.}
 	\label{fig:engine-architecture-3}
 \end{figure}
 
 \begin{figure}[h!]
-	\includegraphics[width=\textwidth]{images/Engine-Architecture-4.png}
+	\centering
+	\includegraphics[scale=0.8]{images/Engine-Architecture-4.png}
 	\caption{The first \textit{divide} instruction is invoked. Its result is put on the token queue again.}
 	\label{fig:engine-architecture-4}
 \end{figure} 
 
 \begin{figure}[h!]
-	\includegraphics[width=\textwidth]{images/Engine-Architecture-5.png}
+	\centering
+	\includegraphics[scale=0.8]{images/Engine-Architecture-5.png}
 	\caption{The second \textit{divide} instruction is invoked. Its result is put on the token queue again.}
 	\label{fig:engine-architecture-5}
 \end{figure}

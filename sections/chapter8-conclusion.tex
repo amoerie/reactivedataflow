@@ -19,7 +19,7 @@ More specifically, we provided the following contributions:
 \begin{description}[style=nextline]
 	\item[An interpreter for a reactive language] We designed and implemented an interpreter based on FrTime, but which chooses to provide explicit reactive operators rather than implicitly applying reactivity. This interpreter applies a traditional evaluation model to keep signals up to date, in the form of a signal update graph. 
 	\item[A mapping algorithm from signals to dataflow instructions] We implemented an algorithm that maps the concepts of reactive programming to instructions in the dataflow execution model and solves a major mismatch between the two: the consumption of arguments in dataflow, as described in Chapter 4. Furthermore, we showed that reactive programs can be correctly translated to dataflow instructions so that they behave exactly the same. 
-	\item[Comparison of a traditional reactive evaluation model and signals atop the dataflow execution model] *** TODO *** TODO *** TODO
+	\item[Comparison of a traditional reactive evaluation model and signals atop the dataflow execution model] We evaluated the performance of both approaches in terms of latency, throughput and scalability and showed that the platform overhead of parallelism, for now, does not outweigh the benefits of parallelism. We do note however that single threaded dataflow execution already brings with it benefits in terms of throughput, although at the cost of latency.
 \end{description}
 
 \newpage
