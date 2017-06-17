@@ -16,7 +16,7 @@ At the core of reactive programming are the following main concepts:
 	\item The automatic tracking of dependencies and re-evaluation by the language runtime
 \end{itemize}
 
-A number of implementations exist for reactive programming, in this thesis we will focus on the interpretation taken in FrTime \citep{cooper_embedding_2006}.
+A number of implementations exist for reactive programming, in this thesis we will focus on the interpretation taken in FrTime \cite{cooper_embedding_2006}.
 
 \subsection{Example}
 
@@ -57,7 +57,7 @@ Even though the underlying mechanism will still be identical to more traditional
 
 \subsection{Introduction}
 
-The dataflow model \citep{johnston_advances_2004} is a paradigm focused on the parallel execution of programs. In this paradigm, instructions are seen as isolated units, which should be able to execute whenever the necessary operands have been provided. Contrary to imperative programming, instructions are not invoked by a program counter, but rather whenever all of the operands are present. 
+The dataflow model \cite{johnston_advances_2004} is a paradigm focused on the parallel execution of programs. In this paradigm, instructions are seen as isolated units, which should be able to execute whenever the necessary operands have been provided. Contrary to imperative programming, instructions are not invoked by a program counter, but rather whenever all of the operands are present. 
 
 The execution of a program in the dataflow model can be represented as a direct graph of nodes where each node represents an instruction and each edge is data traveling between instructions. It is up to the dataflow engine to orchestrate inputs so that instructions are invoked when all of the input data is present. Whenever an instruction is invoked, the output is sent through to all connected instructions which depend on it.
 
@@ -88,7 +88,7 @@ If at any point in the future, b or c (which should be seen as the output of oth
 \subsection{Tagged Token DataFlow}
 \label{sec:tagged-token-dataflow}
 
-The dataflow model has different possible implementations, in this dissertation we solely focus on \textit{tagged token dataflow} \citep{arvind_executing_1990}.
+The dataflow model has different possible implementations, in this dissertation we solely focus on \textit{tagged token dataflow} \cite{arvind_executing_1990}.
 In this version, instruction arguments, i.e. tokens, are tagged with meta data to provide the engine with the necessary information to orchestrate the data flows and also to provide the possibility of making the graph reentrant by using execution contexts. For example, when calling a function multiple times the engine has to ensure these calls are separated correctly when invoking the instructions. A token consists of the following parts, as shown in figure \ref{fig:background-dataflow-token}:
 
 \begin{figure}[ht]

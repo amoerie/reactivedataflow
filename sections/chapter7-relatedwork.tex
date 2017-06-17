@@ -10,7 +10,7 @@ Finally, we discuss the virtual machine design of the dataflow engine that FrDat
 
 \subsection{Elm}
 
-In 2012, Evan Czaplicki wrote his dissertation on Elm \citep{czaplicki_elm:_2012}, a functional reactive programming language for the web. In this paper, he presents a new language \textit{Elm} that supports concurrent functional programming for the web. Elm is compiled down to JavaScript using a compiler written in Haskell and promises to produce no runtime errors when everything compiles. 
+In 2012, Evan Czaplicki wrote his dissertation on Elm \cite{czaplicki_elm:_2012}, a functional reactive programming language for the web. In this paper, he presents a new language \textit{Elm} that supports concurrent functional programming for the web. Elm is compiled down to JavaScript using a compiler written in Haskell and promises to produce no runtime errors when everything compiles. 
 Most of the reactive programming concepts in FrDataFlow were actually heavily inspired by Elm, such as \textit{signals} and the \textit{lift} function. 
 Another concept inspired by Elm is signal graphs: reactive primitives as nodes and value flows as edges. Of course, source signals are a bit different in the web. For example, Elm provides source signals that represent mouse clicks, mouse positions or generally any kind of DOM event which is captured by the standard library. In the isolated, experimental little world of FrDataFlow, primitive source signals other than the current time were hard to come by. 
 
@@ -77,7 +77,7 @@ A major difference between FrTime and FrDataFlow is its update model. FrDataFlow
 
 In FrDataFlow, callbacks and closures are not an essential part of the update mechanism. All signals are stored in a topologically sorted graph, where each signal can access its parents and children. When a new value propagates through the graph, the update loop simply grabs the necessary information from the parent signals to provide to the child.
 
-FrTime's callback model in combination with their queue based update algorithm actually comes with a string of performance problems, which they try to address by \textit{lowering} \cite{burchett_lowering:_2007} their operators, essentially collapsing multiple operations into one to reduce overhead and to minimize the graph size. Although this considerably improves execution time, it unfortunately also reduces parallelization opportunities by growing the size of one signal node. In FrDataFlow, no such optimizations are considered. 
+FrTime's callback model in combination wi]th their queue based update algorithm actually comes with a string of performance problems, which they try to address by \textit{lowering} \cite{burchett_lowering:_2007} their operators, essentially collapsing multiple operations into one to reduce overhead and to minimize the graph size. Although this considerably improves execution time, it unfortunately also reduces parallelization opportunities by growing the size of one signal node. In FrDataFlow, no such optimizations are considered. 
 
 \section{Dataflow Model}
 

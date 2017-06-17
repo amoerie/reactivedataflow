@@ -2,7 +2,8 @@
 
 \section{Introduction}
 
-In this chapter, a dataflow engine is presented based on the work detailed in \citet{saey_extensible_2017}.
+In this chapter, a dataflow engine is presented based on the work detailed in \textit{An Extensible Virtual Machine Design for the Execution of High-Level Languages on Tagged-Token Dataflow Machines} \cite{saey_extensible_2017}.
+	
 This engine is designed to support parallel execution of instructions by queuing all operands to instructions and executing these in a scope agnostic way.
 Tagged token dataflow is an extension to the data flow model where tags are used to distinguish the execution context of tokens, i.e. multiple invocations of the same instruction with different execution contexts, for example calling the same function twice (See section \ref{sec:tagged-token-dataflow}).
 For the purposes of this thesis, a lightweight version of this engine has been implemented in Racket to facilitate the mapping process from FrDataFlow. Furthermore, we implemented a mapping layer that translates reactive signals to data flow instructions. Even though there were some mismatches that needed to be addressed, reactive programs can now be expressed in FrDataFlow and evaluated atop the dataflow engine. 

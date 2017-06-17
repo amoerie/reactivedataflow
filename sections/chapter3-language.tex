@@ -3,7 +3,7 @@
 
 \section{Introduction}
 
-For the purposes of this thesis, we have implemented a lightweight language called \textit{FrDataFlow} using two different AST interpreters in Racket, supporting a small subset of language features found in Racket. The first interpreter is implemented in the style of the metacircular interpreter found in \citet{abelson_structure_1999} and supports reactive patterns on top of the already existing Racket language. The second interpreter also supports the exact same language, but executes its instructions atop a dataflow engine. We chose to implement this custom language \textit{FrDataFlow} (rather than a framework or library) to maintain maximum control over the inner workings and to facilitate experimentation atop the dataflow engine. The main goal was to have a reactive superset of Racket for experimental purposes during this thesis.
+For the purposes of this thesis, we have implemented a lightweight language called \textit{FrDataFlow} using two different AST interpreters in Racket, supporting a small subset of language features found in Racket. The first interpreter is implemented in the style of the metacircular interpreter found in   \textit{Structure and Interpretation of Computer Programs} \cite{abelson_structure_1999} and supports reactive patterns on top of the already existing Racket language. The second interpreter also supports the exact same language, but executes its instructions atop a dataflow engine. We chose to implement this custom language \textit{FrDataFlow} (rather than a framework or library) to maintain maximum control over the inner workings and to facilitate experimentation atop the dataflow engine. The main goal was to have a reactive superset of Racket for experimental purposes during this thesis.
 
 \newpage
 \section{FrDataFlow}
@@ -13,7 +13,7 @@ For the purposes of this thesis, we have implemented a lightweight language call
 
 FrDataFlow provides an environment with most Racket language constructs (defining variables, procedures, lambda, primitive operators, ...), the \textit{lift} operator (which creates a new signal based on other signals) and some built in signals, shown in listing \ref{lst:language-frdataflow-builtinsignals}
 
-\begin{lstlisting}[caption={Built in signals},captionpos=b,label={lst:language-frdataflow-builtinsignals}]
+\begin{lstlisting}[caption={Built in signals},captionpos=b,label={lst:language-frdataflow-builtinsignals},language=FrDataFlow]
 ;; A signal which emits the current seconds since 1 Jan 1970, every second
 current-unix-timestamp	
 ;; A signal which emits the current temperature from time to time
