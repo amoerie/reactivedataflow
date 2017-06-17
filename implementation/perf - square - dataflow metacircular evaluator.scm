@@ -538,14 +538,16 @@
   (define new-value (current-milliseconds))
   (signal-value! current-unix-timestamp new-value)
   (add-inputs-with-return! dataflow-manager 1 (list new-value)))
-(define (current-unix-timestamp-loop callback)
-  (define index (get-signal-operation-index current-unix-timestamp))
+
+(define (current-unix-timestamp-loop dataflow-manager timeout)
   (let loop ()
-    (define new-value (current-milliseconds))
-    (signal-value! current-unix-timestamp new-value)
-    (callback)
-    (sleep 0.000001)
-    (loop)))
+    (if (< (current-milliseconds) timeout)
+        (begin
+          ;;(display "updating time")
+          (update-current-unix-timestamp! dataflow-manager)
+          (sleep 0.000001)
+          (loop))
+        #f)))
 
 ;;
 ;; current-temp-fahrenheit
@@ -822,7 +824,6 @@
       (let ((runtime-result (get-value! dataflow-manager)))
         (set! results (cons (string-append (number->string (current-milliseconds)) ";" (number->string (car runtime-result)) " ") results))
         (sleep 0.0000001)
-        (update-current-unix-timestamp! dataflow-manager)
         (loop))
       results)))
 
@@ -831,20 +832,20 @@
   (define dataflow-instructions (make-instructions))
   (newline) (display "OK Created dataflow instructions")
 
-  (define dataflow-manager (start-runtimes dataflow-instructions 4))
+  (define dataflow-manager (start-runtimes dataflow-instructions 1))
   (update-current-unix-timestamp! dataflow-manager)
   
   (newline) (display "Starting up current-unix-timestamp-loop")
   ;;(newline) (display "Starting up current-temp-fahrenheit-loop")
   ;;(define t2 (thread (lambda () (current-temp-fahrenheit-loop source-signal-callback))))
   (newline) (display "Starting up dataflow-manager-processor-loop")
-  ;;(define t1 (thread (lambda () (current-unix-timestamp-loop source-signal-callback))))
+  (define t1 (thread (lambda () (current-unix-timestamp-loop dataflow-manager (+ (current-milliseconds) 6000)))))
   ;;(thread (lambda () (sleep 1000) (kill-thread t1)))
   (define results (dataflow-manager-processor-loop dataflow-manager (+ (current-milliseconds) 6000)))
   (stop-runtimes dataflow-manager)
   ;;(dataflow-manager-processor-loop dataflow-manager
   (newline) (display "Shutting down")
-  ;;(kill-thread t1)
+  ;; (kill-thread t1)
   (newline)
   (for-each display results)
   ;;(kill-thread t2)

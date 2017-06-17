@@ -834,7 +834,7 @@
   (define dataflow-instructions (make-instructions))
   (newline) (display "OK Created dataflow instructions")
 
-  (define dataflow-manager (start-runtimes dataflow-instructions 4))
+  (define dataflow-manager (start-runtimes dataflow-instructions 1))
   (update-current-unix-timestamp! dataflow-manager)
   
   (newline) (display "Starting up current-unix-timestamp-loop")
