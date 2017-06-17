@@ -136,10 +136,10 @@ Surprisingly, the square topology suffers most from the split up into multiple p
 
 \subsection{Discussion of results}
 
-From the results of our benchmarks, we can first conclude that latency generally increases when running atop the dataflow engine, especially when running it in parallel is added to the equation. This was to be expected: the dataflow execution model goes through more phases and needs more bookkeeping than the update loop of the first runtime to support the same behavior. On the other hand, it provides more scalability. We see that the throughput globally increases when running atop the dataflow engine, although the introduction of parallelism does not result in better throughput. We attribute this to two characteristics of our practical implementation:
+From the results of our benchmarks, we can first conclude that latency generally increases when running atop the dataflow engine, especially when running it in parallel is added to the equation. This was to be expected: the dataflow execution model goes through more phases and needs more bookkeeping than the update loop of the first runtime to support the same behavior. On the other hand, it provides more scalability. We see that the throughput globally increases when running atop the dataflow engine, although the introduction of parallelism does not result in better throughput. We attribute this to two characteristics of our implementation:
 
 \begin{enumerate}
-	\item Racket places communicate across threads using channels, which does not come cheap. This communication overhead, with certain topologies, unfortunately is more detrimental for the throughput than the benefits of running the engine in parallel. 
+	\item Racket places communicate across threads using channels, which does not come cheaply. This communication overhead, with certain topologies, unfortunately is more detrimental for the throughput than the benefits it brings. 
 	\item In our benchmarks, the signal update callbacks merely pass on incoming values rather than doing a meaningful computation. While this is common in reactive programming, it does mean that calling these callbacks is extremely fast and that parallelizing them will only be beneficial if the overhead of parallelisation is negligible. 
 \end{enumerate}
 
