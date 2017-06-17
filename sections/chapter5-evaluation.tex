@@ -79,7 +79,7 @@ More interestingly, values in the fanout topology seem to take longer on average
 Even more so than with latency, the square topology is the clear winner when it comes to the sheer amount of values it can push through the graph per second. The square graph can push out more than 10 000 values per second and is an order of magnitude more efficient compared to the fanout or linear approach, who only managed to process 1 000 values by and large. This makes sense, because every update loop iterates over all the signal nodes once. In the square topology, this means it can propagate 10 values to the end in one loop. The linear version on the other hand can only process one, because when the iteration is happening it is really pushing forward one value from the first signal all the way to the last. Similarly, the fanout approach results in one loop pushing a single value from the first signal to all other signals. The square topology, by splitting up the graph in 10 linear parts, essentially 
 parallelizes this work. 
 
-\section{With dataflow engine}
+\section{With dataflow engine, single core}
 
 In this section, we repeat the same tests of the previous section but this time using the runtime that sits atop the dataflow engine. The programs are exactly the same, but they are now compiled to dataflow instructions and invoked there. These are the tests for our second runtime for FrDataFlow. 
 
@@ -101,8 +101,16 @@ The first thing that is immediately obvious is the increase in latency. While th
 	\label{fig:evaluation-withdataflow-throughput}
 \end{figure}
 
-\subsection{Without parallelization}
+We observe that the general throughput using the dataflow engine is more efficient than the first runtime. 
+Especially the fanout and linear approaches benefit here and see a tripling of their output. The square topology on the other hand is less advantaged by the second runtime and takes a small hit in throughput compared to the first runtime.
+
+The major reason for this increase in throughput can be attributed to the compilation step of the signals that happens in the mapping algorithm. In the first runtime, the update lambdas associated with each signal are fed into the metacircular evaluator which has to lookup variables in the lexical scope and generally introduces a significant overhead just to call a lambda and pass on a value. When running atop the dataflow engine, these update lambdas are fed natively to the dataflow engine which has no knowledge of the metacircular evaluator, which allows it to skip most of the evaluation steps that are necessary in the first runtime.
+
+The reason why the square topology does a little worse is because the update loop in the first runtime is - by accident - ideally optimized for square topologies, while the dataflow engine is not: tokens are just processed one by one, which levels the playing field for all three topologies. 
 
 \subsection{With parallelization}
 
 \section{Conclusion}
+
+
+
