@@ -1,3 +1,6 @@
-\section*{Abstract}
+% !TeX spellcheck = nl_NL
+\section*{Samenvatting}
 
-            
+Programma's in domeinen zoals robotica, het web en mobiele applicaties worden allemaal aangedreven door events. Dit inherent asynchrone model conflicteert met de synchrone aard van imperatief, sequentieel programmeren, en dit is waarom andere paradigma's over de tijd verschenen zijn om deze problemen beter aan te pakken. Een dergelijk paradigma dat speciaal ontworpen is voor \textit{event-driven} omgevingen is reactief programmeren, die events concretiseert als tijdvariabele waarden en ze samenstelbaar maakt aan de hand van declaratieve operatoren. Reactief programmeren probeert de uitdagingen van asynchroniciteit aan te pakken, zoals bijvoorbeeld de toepasselijk genaamde \textit{callback hell}, door een uniforme interface te voorzien over verschillende asynchrone bronnen (e.g. I/O, events, ...) en op die manier te stroomlijnen hoe data doorgegeven wordt doorheen deze programma's.
+
+Met dit hoge niveau van abstractie komt echter ook een bedenking met betrekking tot efficiënte en timing, die van essentieel belang zijn voor deze systemen. Het merendeel van reactieve programma's tot nu toe zijn single threaded en benutten niet het volledige potentieel van hun onderliggende systemen. Onderzoek is reeds uitgevoerd naar om deze programma's te parallelliseren, maar wij stellen een ander alternatief voor: het mappen van deze reactive programma's naar het dataflow executiemodel. Dit low level platform bepaalt dat primitieve instructies kunnen worden opgeroepen wanneer hun inputs aanwezig zijn, op voorwaarde dat ze geen gedeelde state uitlezen of muteren. 
