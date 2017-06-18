@@ -108,7 +108,7 @@ The reason why the square topology does a little worse is because the update loo
 
 \subsection{With parallelization, four cores}
 
-In this section, we repeat the same tests a third time but this time using configuring the dataflow engine to spread its work across 4 cores. The engine does this by making use of Racket Places \cite{tew_places:_2011}, which starts up n runtimes where n is a number lower than or equal to the number of available processor cores. 
+In this section, we repeat the same tests a third time but this time configuring the dataflow engine to spread its work across 4 cores. The engine does this by making use of Racket Places \cite{tew_places:_2011}, which starts up a configurable amount of runtimes. 
 
 \subsubsection{Latency}
 
