@@ -3,12 +3,14 @@
 In our research for this dissertation, we explored the initial steps needed to map from reactive programs to the dataflow execution model. 
 These steps included creating our own experimental language FrDataFlow, writing a mapping algorithm from a reactive graph to a dataflow graph and executing the latter atop a data flow engine as described in \cite{saey_extensible_2017}. This chapter will revisit the original problems we set out to tackle, the solutions we proposed and conclude with some closing remarks. 
 
+\newpage
 \section{Revisiting the problem statement}
 
 Reactive programming is an event-first programming paradigm well suited for reactive systems (e.g. user interfaces, robotics, etc.) that provides the concept of signals which can be composed using declarative operators.
 These signals are a common abstraction over I/0, events and asynchronous computations and provide a single interface to model these concepts.
 Efficiency and timing is essential to create responsive and reliable reactive systems. However, the majority of reactive programming implementations are not designed to support parallelism, which is necessary to maximally utilise the processing power of modern processors. We propose to run reactive programs atop the dataflow execution model to make maximal use of the parallelization abilities provided by the underlying host. This execution model invokes instructions when the inputs are available and does not provide any form of global state, allowing instructions that do not share data dependencies to be invoked side by side. 
 
+\newpage
 \section{Contributions}
 
 We implemented an experimental Racket based language called FrDataFlow that adds reactive concepts to a subset of Racket constructs. This language was implemented using two different interpreters: one which directly implements the reactive mechanism in Racket and serves as a reactive runtime by manually keeping the graph of signals up to date using an update loop, as described in chapter 3 - Language.

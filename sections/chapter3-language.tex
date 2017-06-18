@@ -49,20 +49,21 @@ How the example program is evaluated and how the signals are kept up to date by 
 When this program is evaluated, FrDataFlow will first build the signal graph by registering dependent signals as children on each signal. This means that, when a \textit{lift} function is invoked, it will register the newly created signal as a child in every signal that is referenced. It will also store the lambda that is provided to the lift operator as the update function for that signal. Figure \ref{fig:language-frdataflow-example} is a visualization of this graph for the example given in listing \ref{lst:language-frdataflow-billboard}.
 
 \begin{figure}[h]
-	\centerline{\includegraphics[width=\textwidth]{images/Language-FrDataflow-Example.png}}
+	\centerline{\includegraphics[scale=0.8]{images/Language-FrDataflow-Example.png}}
 	\caption{The billboard as a signal graph}
 	\label{fig:language-frdataflow-example}
 \end{figure}
 
-Secondly, FrDataFlow will topologically sort this graph into a list, which means each signal appears later in the list than the signals it depends on. In other words, the position of a signal in this list indicates that it can be a child to signals that come before it, and that its children must come after it in the list. This allows FrDataFlow to simply loop over this topologically sorted list from start to finish, ensuring that signals are updated in the correct order. 
+Secondly, FrDataFlow will topologically sort this graph into a list as shown in figure \ref{fig:language-frdataflow-topologically-sorted-list}, which means each signal appears later in the list than the signals it depends on. In other words, the position of a signal in this list indicates that it can be a child to signals that come before it, and that its children must come after it in the list. This allows FrDataFlow to simply loop over this topologically sorted list from start to finish, ensuring that signals are updated in the correct order. 
+
+\newpage
+\subsubsection{The update loop}
 
 \begin{figure}[h]
 	\centerline{\includegraphics[width=\textwidth]{images/Language-FrDataflow-TopologicallySortedList.png}}
 	\caption{The billboard as a topologically sorted list}
 	\label{fig:language-frdataflow-topologically-sorted-list}
 \end{figure}
-
-\subsubsection{The update loop}
 
 To implement the update behavior, each signal has a boolean flag indicating if it is stale or not. A signal is considered stale if (at least) one its parents has emitted a new value, but has not been updated yet. Upon startup of the runtime, FrDataFlow initializes a never ending update loop which loops over the topologically sorted list (as shown in figure \ref{fig:language-frdataflow-topologically-sorted-list}), skipping any signals which are not stale. 
 If it encounters a stale signal, the update function that was provided during the creation of the signal will be called with the latest values of the parent signals. The signal is flagged as no longer being stale, and its direct children are flagged as stale immediately. Take for example an update of the current temperature. We start with a situation where the current date and temperature are already known and shown on the billboard, so the state of the signal graph looks like what is shown in figure \ref{fig:language-frdataflow-1}. 

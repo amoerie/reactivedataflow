@@ -10,9 +10,6 @@ In this chapter, we investigate the performance characteristics of the two runti
   \item [Scaling]		The amount of performance that can be gained by executing the program in parallel
 \end{description}
 
-These objective measurements can provide us with meaningful insight as to how efficient both interpreters are, and what the effects of parallelization are for our benchmarks.
-
-\newpage
 \section{Topologies}
 
 Before we can start running benchmarks, we must first define the types of programs that we are interested in profiling. In \textit{Optimizing Distributed REScala} \cite{drechsler_optimizing_2014}, three topologies are suggested that sufficiently represent any reactive program for the purposes of evaluating performance.
@@ -79,6 +76,7 @@ More interestingly, values in the fanout topology seem to take longer on average
 Even more so than with latency, the square topology is the clear winner when it comes to the sheer amount of values it can push through the graph per second. The square graph can push out more than 10 000 values per second and is an order of magnitude more efficient compared to the fanout or linear approach, who only managed to process 1 000 values by and large. This makes sense, because every update loop iterates over all the signal nodes once. In the square topology, this means it can propagate 10 values to the end in one loop. The linear version on the other hand can only process one, because when the iteration is happening it is really pushing forward one value from the first signal all the way to the last. Similarly, the fanout approach results in one loop pushing a single value from the first signal to all other signals. The square topology, by splitting up the graph in 10 linear parts, essentially 
 parallelizes this work. 
 
+\newpage
 \subsection{With dataflow engine, single core}
 
 In this section, we repeat the same tests of the previous section but this time using the runtime that sits atop the dataflow engine. The programs are exactly the same, but they are now compiled to dataflow instructions and invoked there. These are the tests for our second runtime for FrDataFlow. 
