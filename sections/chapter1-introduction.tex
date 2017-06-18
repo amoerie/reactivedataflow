@@ -8,7 +8,7 @@ Reactive programming solves these problems by putting events at the forefront as
 \section{Problem statement}
 
 Timing and efficiency is critical and desired for reactive systems (e.g. user interfaces, robotics, etc.).
-Thus far the majority of reactive programming implementations have been single threaded and don't utilise the maximum potential of their underlying host. Slowly but surely there are parallel approaches popping up which focus on thread based or actor based concurrency \cite{peterson_parallel_2000}, but none have tried mapping these reactive programs onto something that was designed to run parallel from the beginning: the dataflow execution model. This execution model allows instruction invocation whenever the inputs are available (contrary to the sequential models such as the Von Neumann model where instructions are executed one after another) and does not have global state, which allows it to exploit all of the available parallelism in a given input program.
+Thus far the majority of reactive programming implementations have been single threaded and don't utilise the maximum potential of their underlying host. Slowly but surely there are parallel approaches popping up which focus on thread based or actor based concurrency \cite{peterson_parallel_2000}, but none have tried mapping these reactive programs onto something that was designed to run parallel from the beginning: the dataflow execution model. This execution model allows instruction invocation whenever the inputs are available (contrary to the sequential models such as the Von Neumann model where instructions are executed one after another) and does not have global state, which allows it to exploit all the available parallelism in a given input program.
 
 Reactive programming nor the dataflow execution model are new technologies, both go back to at least the 1980s \cite{harel_development_1985, veen_dataflow_1986}. While they try to solve different problems, they do share an interesting common trait: the evaluation models of both use directed graphs to orchestrate data flowing through its applications. 
 
@@ -29,7 +29,7 @@ Furthermore, we evaluate this approach by comparing it to an implementation of t
 
 \section{Structure}
 
-This dissertation is structured to provide the reader with sufficient context before the actual research and evaluation is discussed. To this end, chapter 2 provides a general background with regards to both reactive programming and the dataflow execution model. It succinctly covers the problems they want to solve, how they attempt to do so, the advantages of these approaches and a short example illustrating how they work.
+This dissertation is structured to provide the reader with sufficient context before the actual research and evaluation is discussed. To this end, chapter 2 provides a general background with regard to both reactive programming and the dataflow execution model. It succinctly covers the problems they want to solve, how they attempt to do so, the advantages of these approaches and a short example illustrating how they work.
 
 In chapter 3, our custom language FrDataFlow is presented, with an elaborate sample program displaying most of the features supported by the language. The evaluation of this example by our interpreter is then visually detailed with diagrams and corresponding explanations. 
 

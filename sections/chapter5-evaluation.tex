@@ -47,7 +47,7 @@ The square topology is expected to be the most common, it provides a signal grap
 \section{Benchmarks}
 
 All of the benchmarks in this chapter are run in the Racket VM with unlimited memory (16 GB RAM physical limit) and on an AMD Phenom II X4 955 processor (Quad core, 3.2 GHz). Three sample programs were created with around 100 signals each, each of which implementing one of the three topologies as shown in the diagrams. These programs were each executed three times for 60 seconds, taking the averages of the output to produce the charts in this chapter.
-A single source signal was emulated to emit 10 million values per second and the output nodes of the signal graphs were inspected to collect information on how many values were propagate through the graph and at what rate the update mechanisms could keep up with the stream of incoming data. 
+A single source signal was emulated to emit 10 million values per second and the output nodes of the signal graphs were inspected to collect information on how many values were propagated through the graph and at what rate the update mechanisms could keep up with the stream of incoming data. 
 
 \newpage
 \subsection{Without dataflow engine}
