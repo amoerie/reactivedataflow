@@ -13,7 +13,7 @@ For the purposes of this thesis, a lightweight version of this engine has been i
 
 \subsection{Components}
 
-The dataflow engine consists of four core components:
+The dataflow engine consists of three core components:
 
 \begin{description}[style=nextline]
 	\item[The token queue] This contains the tokens that need to be processed. A token has a value and meta data about which instruction it needs to be sent to. 
@@ -21,7 +21,7 @@ The dataflow engine consists of four core components:
 	\item[The execution unit] This unit will actually invoke the instructions with its operands
 \end{description}
 
-The interaction between these four components can be seen in figure \ref{fig:engine-architecture-tokenprocessing}. 
+The interaction between these components can be seen in figure \ref{fig:engine-architecture-tokenprocessing}. 
 What the dataflow engine essentially does is continuously pull tokens from the queue, send it through the matching memory which calls the execution unit. This will invoke the instruction with its operands, wrap the result in a token and put it on the queue again. 
 
 \begin{figure}[h!]
